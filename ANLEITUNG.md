@@ -42,7 +42,7 @@ Läuft alles, kann `/opt/fahrtenbuch-v1` gelöscht werden.
 ### Daten aus CSV-Dateien einspielen (optional)
 
 Nur nötig, wenn Fahrten in der Datenbank fehlen (z. B. neue, leere Installation):
-App öffnen → runder Kreis oben rechts → **Daten** → **CSV importieren** → eine oder mehrere
+App öffnen → Regler-Symbol oben rechts → **CSV importieren** → eine oder mehrere
 `Fahrtenbuch_JJJJ-MM.csv` auswählen.
 
 Fahrten, die schon existieren (gleiches Datum, Zweck, KM-Stände), werden übersprungen –
@@ -145,7 +145,7 @@ sqlite3 /opt/fahrtenbuch/data/fahrtenbuch.db "SELECT * FROM trips;"
 ### Datensicherung
 
 Die komplette Datenbank ist eine Datei: `/opt/fahrtenbuch/data/fahrtenbuch.db`.
-Zusätzlich in der App: Profil → **Daten** → **Alle Fahrten sichern** lädt eine CSV mit allen Fahrten
+Zusätzlich in der App: Regler-Symbol oben rechts → **Alle Fahrten sichern** lädt eine CSV mit allen Fahrten
 herunter, die sich jederzeit wieder importieren lässt.
 
 ```bash

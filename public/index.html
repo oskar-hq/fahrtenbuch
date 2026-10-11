@@ -46,35 +46,30 @@
   input { font: inherit; color: inherit; }
   .num { font-variant-numeric: tabular-nums; }
 
-  .app { max-width: 520px; margin: 0 auto; padding: calc(var(--safe-top) + 26px) var(--pad) calc(var(--safe-bottom) + 120px); }
+  .app { max-width: 520px; margin: 0 auto; padding: calc(var(--safe-top) + 18px) var(--pad) calc(var(--safe-bottom) + 110px); }
 
   /* ── Kopf ───────────────────────────────────────────── */
-  .top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 48px; }
-  .tabs { display: flex; gap: 14px; }
-  .tab { font-size: 24px; font-weight: 700; letter-spacing: -0.02em; color: var(--gray-2); transition: color .2s; padding: 0; }
-  .tab.active { color: var(--ink); }
-  .avatar {
-    width: 36px; height: 36px; border-radius: 50%; background: var(--gray-2); color: #fff;
-    font-weight: 700; font-size: 14px; display: grid; place-items: center; transition: background .2s;
-  }
-  .avatar.active { background: var(--ink); }
-
-  .view { display: none; }
-  .view.active { display: block; animation: fade .25s ease; }
-  @keyframes fade { from { opacity: 0; transform: translateY(6px); } }
+  .top { display: flex; align-items: center; justify-content: space-between; margin: 0 -10px 48px; }
+  .month-nav { display: flex; align-items: center; gap: 2px; font-size: 15px; font-weight: 700; }
+  .month-nav #h-month { padding: 0 4px; }
+  .mnav, .gear { width: 36px; height: 36px; display: grid; place-items: center; border-radius: 50%; color: var(--gray); transition: background .15s, opacity .15s; }
+  .mnav:active, .gear:active { background: var(--soft); }
+  .mnav:disabled { opacity: .25; }
+  .mnav svg { width: 16px; height: 16px; }
+  .gear svg { width: 19px; height: 19px; }
 
   /* ── Kennzahl ───────────────────────────────────────── */
   .eyebrow { font-size: 13px; font-weight: 600; color: var(--gray); margin-bottom: 6px; }
-  .hero { font-size: 30px; font-weight: 700; letter-spacing: -0.025em; line-height: 1.1; }
-  .hero small { font-size: 18px; letter-spacing: -0.01em; }
+  .hero { font-size: 40px; font-weight: 700; letter-spacing: -0.025em; line-height: 1.1; }
+  .hero small { font-size: 20px; letter-spacing: -0.01em; }
   .delta { margin-top: 8px; font-size: 13px; font-weight: 600; display: flex; align-items: center; gap: 5px; }
   .delta svg { width: 12px; height: 12px; }
-  .delta.muted { color: var(--gray); }
+  .sub { margin-top: 4px; font-size: 13px; font-weight: 500; color: var(--gray); }
 
   /* ── Laufende Fahrt ─────────────────────────────────── */
   .live {
     display: flex; align-items: center; gap: 14px; width: 100%; text-align: left;
-    margin: 0 0 40px; padding: 16px 18px; border-radius: 18px; background: var(--ink); color: #fff;
+    margin: -24px 0 40px; padding: 16px 18px; border-radius: 18px; background: var(--ink); color: #fff;
     box-shadow: 0 8px 24px rgba(0,0,0,.14); transition: transform .15s var(--ease);
   }
   .live:active { transform: scale(.98); }
@@ -86,32 +81,15 @@
   .live svg { width: 16px; height: 16px; opacity: .6; flex: 0 0 auto; }
 
   /* ── Diagramm ───────────────────────────────────────── */
-  .chart { margin: 32px 0 4px; }
+  .chart { margin: 36px 0 4px; }
   .chart svg { display: block; width: 100%; height: auto; overflow: visible; }
   .chart text { font-family: var(--font); font-size: 9px; fill: var(--gray); font-weight: 600; }
   .chart .lbl-strong { fill: var(--ink); }
 
-  /* ── Karten ─────────────────────────────────────────── */
-  .cards {
-    display: flex; gap: 10px; overflow-x: auto; scroll-snap-type: x mandatory;
-    margin: 28px calc(-1 * var(--pad)) 0; padding: 10px var(--pad) 18px; scrollbar-width: none;
-  }
-  .cards::-webkit-scrollbar { display: none; }
-  .card {
-    flex: 0 0 auto; min-width: 112px; height: 84px; border-radius: 16px; padding: 14px;
-    background: #fff; box-shadow: 0 2px 14px rgba(0,0,0,.05), 0 0 0 1px rgba(0,0,0,.025);
-    display: flex; flex-direction: column; justify-content: space-between; scroll-snap-align: start; text-align: left;
-  }
-  .card .k { font-size: 12px; font-weight: 600; color: var(--gray); }
-  .card .v { font-size: 15px; font-weight: 700; white-space: nowrap; }
-
   /* ── Listen ─────────────────────────────────────────── */
-  .section { margin-top: 36px; }
-  .section-head { display: flex; align-items: center; justify-content: space-between; font-size: 16px; font-weight: 700; margin-bottom: 4px; }
-  .section-head .aside { font-size: 13px; color: var(--gray); font-weight: 600; }
-  .section-head button.aside { color: var(--ink); display: flex; align-items: center; gap: 4px; }
-  .section-head button.aside svg { width: 14px; height: 14px; }
-  .month-label { font-size: 12px; font-weight: 600; color: var(--gray); margin: 24px 0 2px; display: flex; justify-content: space-between; }
+  .section { margin-top: 28px; }
+  .section-head { display: flex; align-items: center; justify-content: space-between; font-size: 13px; font-weight: 600; color: var(--gray); margin-bottom: 4px; }
+  .section-head .aside { font-size: 13px; color: var(--ink); font-weight: 600; }
 
   .row {
     display: flex; align-items: center; gap: 14px; width: 100%; padding: 11px 0; text-align: left;
@@ -133,15 +111,6 @@
   .empty { padding: 36px 0; color: var(--gray); font-size: 13px; font-weight: 500; line-height: 1.5; }
   .empty b { display: block; color: var(--ink); font-size: 14px; }
 
-  /* ── Monats-Chips ───────────────────────────────────── */
-  .chips { display: flex; gap: 4px; overflow-x: auto; margin: 0 calc(-1 * var(--pad)) 32px; padding: 0 var(--pad); scrollbar-width: none; }
-  .chips::-webkit-scrollbar { display: none; }
-  .chip { flex: 0 0 auto; padding: 6px 11px; border-radius: 8px; font-size: 12px; font-weight: 700; color: var(--gray); }
-  .chip.active { background: var(--soft); color: var(--ink); }
-
-  .foot-note { margin-top: 36px; font-size: 12px; color: var(--gray); font-weight: 500; line-height: 1.6; }
-  .foot-note b { color: var(--ink); }
-
   /* ── Untere Leiste ──────────────────────────────────── */
   .dock {
     position: fixed; left: 0; right: 0; bottom: 0; z-index: 20;
@@ -150,7 +119,7 @@
     pointer-events: none;
   }
   .dock-inner { max-width: 472px; margin: 0 auto; display: flex; gap: 10px; }
-  .dock .pill:first-child { flex: .75; }
+  .dock .sq { pointer-events: auto; }
   .pill {
     pointer-events: auto; flex: 1; height: 52px; border-radius: 16px; background: var(--ink); color: #fff;
     display: flex; align-items: center; justify-content: space-between; padding: 0 18px;
@@ -211,11 +180,11 @@
   .sheet-foot .pill { flex: 0 1 200px; margin-left: auto; box-shadow: 0 8px 24px rgba(0,0,0,.14); }
 
   .text-in {
-    width: 100%; border: 0; outline: none; background: none; font-size: 20px; font-weight: 700;
-    padding: 24px 0 10px; border-bottom: 1.5px solid var(--ink); border-radius: 0; caret-color: var(--ink);
+    width: 100%; border: 0; outline: none; background: var(--soft); font-size: 17px; font-weight: 600;
+    margin-top: 28px; padding: 15px 16px; border-radius: 14px; caret-color: var(--ink); -webkit-appearance: none; appearance: none;
   }
-  .text-in::placeholder { color: var(--gray-3); }
-  .suggest { margin-top: 10px; padding-bottom: 12px; }
+  .text-in::placeholder { color: var(--gray); font-weight: 500; }
+  .suggest { margin-top: 14px; padding-bottom: 12px; }
 
   .summary { margin-top: 28px; }
   .sum-row {
@@ -260,69 +229,30 @@
 
 <div class="app">
   <header class="top">
-    <nav class="tabs">
-      <button class="tab active" data-view="trips">Fahrten</button>
-      <button class="tab" data-view="month">Monat</button>
-    </nav>
-    <button class="avatar" data-view="profile" aria-label="Profil" id="avatar">&nbsp;</button>
+    <div class="month-nav">
+      <button class="mnav" data-action="prev" aria-label="Voriger Monat"><span data-icon="back"></span></button>
+      <span id="h-month">&nbsp;</span>
+      <button class="mnav" data-action="next" id="btn-next-month" aria-label="Nächster Monat"><span data-icon="next"></span></button>
+    </div>
+    <button class="gear" data-action="settings" aria-label="Einstellungen"><span data-icon="gear"></span></button>
   </header>
 
-  <!-- FAHRTEN -->
-  <section class="view active" id="view-trips">
-    <div id="h-live"></div>
-    <div class="eyebrow" id="h-eyebrow">&nbsp;</div>
-    <div class="hero num" id="h-km">—</div>
-    <div class="delta" id="h-delta">&nbsp;</div>
-    <div class="chart" id="h-chart"></div>
-    <div class="cards" id="h-cards"></div>
-    <div class="section">
-      <div class="section-head">Fahrten <button class="aside" data-action="new"><span data-icon="plus"></span>Nachtragen</button></div>
-      <div id="h-list"></div>
-    </div>
-  </section>
+  <div id="h-live"></div>
+  <div class="hero num" id="h-km">&nbsp;</div>
+  <div class="delta" id="h-delta">&nbsp;</div>
+  <div class="sub" id="h-sub">&nbsp;</div>
+  <div class="chart" id="h-chart"></div>
 
-  <!-- MONAT -->
-  <section class="view" id="view-month">
-    <div class="chips" id="m-chips"></div>
-    <div class="eyebrow" id="m-eyebrow">&nbsp;</div>
-    <div class="hero num" id="m-km">—</div>
-    <div class="delta muted" id="m-sub">&nbsp;</div>
-    <div class="chart" id="m-chart"></div>
-    <div class="cards" id="m-cards"></div>
-    <div class="section">
-      <div class="section-head">Fahrten <span class="aside" id="m-count"></span></div>
-      <div id="m-list"></div>
-    </div>
-  </section>
-
-  <!-- PROFIL / EINSTELLUNGEN -->
-  <section class="view" id="view-profile">
-    <div class="eyebrow">Persönlich</div>
-    <div class="hero" id="p-name">&nbsp;</div>
-    <div class="cards" id="p-cards"></div>
-    <div class="section">
-      <div class="section-head">Services</div>
-      <button class="row" data-action="sheet-conditions">
-        <span class="ic dark" data-icon="road"></span>
-        <span class="main"><div class="t">Konditionen</div><div class="s">Freikilometer, Preis pro Mehrkilometer</div></span>
-      </button>
-      <button class="row" data-action="sheet-data">
-        <span class="ic dark" data-icon="doc"></span>
-        <span class="main"><div class="t">Daten</div><div class="s">Import, Sicherung, Monatsexport</div></span>
-      </button>
-      <button class="row" data-action="sheet-account">
-        <span class="ic dark" data-icon="user"></span>
-        <span class="main"><div class="t">Konto</div><div class="s">Name für Abrechnungen</div></span>
-      </button>
-    </div>
-    <p class="foot-note">Version 2.0 · Daten liegen in <b>SQLite</b> auf deinem Server.</p>
-    <input type="file" id="file-in" accept=".csv,text/csv" multiple hidden>
-  </section>
+  <div class="section">
+    <div class="section-head"><span>Fahrten</span><button class="aside" data-action="all" id="btn-all">Alle</button></div>
+    <div id="h-list"></div>
+  </div>
+  <input type="file" id="file-in" accept=".csv,text/csv" multiple hidden>
 </div>
 
 <div class="dock">
   <div class="dock-inner">
-    <button class="pill" data-action="export"><span>Export</span><span data-icon="share"></span></button>
+    <button class="sq" data-action="export" aria-label="Exportieren"><span data-icon="share"></span></button>
     <button class="pill" id="dock-main" data-action="primary"><span>Fahrt starten</span><span data-icon="plus"></span></button>
   </div>
 </div>
@@ -361,6 +291,7 @@ const ICONS = {
   table: '<path d="M4 5h16v14H4zM4 10h16M4 15h16M10 5v14"/>',
   trash: '<path d="M5 7h14M10 7V4h4v3M7 7l1 13h8l1-13"/>',
   cal: '<path d="M4 6h16v14H4zM4 10h16M8 3v4M16 3v4"/>',
+  gear: '<path d="M4 7h10M18 7h2M4 17h2M10 17h10"/><circle cx="16" cy="7" r="2"/><circle cx="8" cy="17" r="2"/>',
   user: '<circle cx="12" cy="8" r="4"/><path d="M4.5 20c1.2-3.6 4-5.5 7.5-5.5s6.3 1.9 7.5 5.5"/>',
   eye: '<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',
   alert: '<path d="M12 8v5M12 16.5v.5"/><circle cx="12" cy="12" r="9"/>',
@@ -422,7 +353,6 @@ const state = {
   trips: [],
   settings: { freeKm: 300, pricePerKm: 0.22, name: '' },
   open: null,
-  view: 'trips',
   month: currentYM(),
 };
 
@@ -476,19 +406,17 @@ function monthStats(ym) {
 }
 
 // ── Rendering ────────────────────────────────────────────────────────────────
+function shiftMonth(ym, delta) {
+  const [y, m] = ym.split('-').map(Number);
+  const d = new Date(y, m - 1 + delta, 1);
+  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}`;
+}
+
 function render() {
-  document.querySelectorAll('[data-view]').forEach(b => b.classList.toggle('active', b.dataset.view === state.view));
-  document.querySelectorAll('.view').forEach(v => v.classList.toggle('active', v.id === 'view-' + state.view));
-  $('#avatar').textContent = (state.settings.name.trim()[0] || 'F').toUpperCase();
   $('#dock-main').innerHTML = state.open
     ? `<span>Fahrt beenden</span>${icon('check')}`
     : `<span>Fahrt starten</span>${icon('plus')}`;
-  if (state.view === 'trips') renderHome();
-  if (state.view === 'month') renderMonth();
-  if (state.view === 'profile') renderProfile();
-}
 
-function renderHome() {
   const o = state.open;
   $('#h-live').innerHTML = o ? `
     <button class="live" data-action="open-trip">
@@ -496,97 +424,65 @@ function renderHome() {
       <span class="main"><div class="t">Unterwegs · ${esc(o.purpose)}</div><div class="s num">${relDate(o.date)} · ab ${fmtOdo(o.km_start)}</div></span>
       ${icon('next')}
     </button>` : '';
-  const ym = currentYM();
-  const now = new Date();
-  const days = daysIn(ym), day = now.getDate();
-  const { trips, total } = monthStats(ym);
-  const free = state.settings.freeKm;
-  const budget = free / days * day;
-  const diff = budget - total;
 
-  $('#h-eyebrow').textContent = `${monthOnly(ym)} · Tag ${day} von ${days}`;
-  $('#h-km').innerHTML = `${fmtKm(total)} <small>km</small>`;
-  $('#h-delta').innerHTML = diff >= 0
-    ? `${icon('down')} ${fmtKm(diff)} km unter Tagesbudget`
-    : `${icon('up')} ${fmtKm(-diff)} km über Tagesbudget`;
-  $('#h-chart').innerHTML = chartSVG(ym, trips, day);
-
-  const rest = Math.max(0, free - total);
-  const restDays = days - day;
-  $('#h-cards').innerHTML = cards([
-    ['Noch frei', `${fmtKm(rest)} km`],
-    ['Pro Resttag', restDays > 0 ? `${fmtKm(rest / restDays)} km` : '—'],
-    ['KM-Stand', fmtOdo(lastOdo())],
-    ['Fahrten', `${trips.length}`],
-  ]);
-
-  const list = $('#h-list');
-  if (!state.trips.length) {
-    list.innerHTML = `<div class="empty"><b>Noch keine Fahrten</b>Tippe auf „Fahrt starten“ oder importiere deine CSV-Dateien über das Profil oben rechts.</div>`;
-    return;
-  }
-  const groups = new Map();
-  [...state.trips].reverse().forEach(t => {
-    const k = t.date.slice(0, 7);
-    if (!groups.has(k)) groups.set(k, []);
-    groups.get(k).push(t);
-  });
-  list.innerHTML = [...groups.entries()].map(([k, ts]) =>
-    `<div class="month-label"><span>${monthName(k)}</span><span class="num">${fmtKm(sumKm(ts))} km</span></div>` + ts.map(tripRow).join('')
-  ).join('');
-}
-
-function renderMonth() {
-  const months = [...new Set([currentYM(), ...state.trips.map(t => t.date.slice(0, 7))])].sort().reverse();
-  if (!months.includes(state.month)) state.month = months[0];
   const ym = state.month;
-  $('#m-chips').innerHTML = months.map(m =>
-    `<button class="chip${m === ym ? ' active' : ''}" data-month="${m}">${monthShort(m)}</button>`).join('');
-
+  const isCurrent = ym === currentYM();
+  const days = daysIn(ym);
   const { trips, total, extra, cost } = monthStats(ym);
   const free = state.settings.freeKm;
-  const isCurrent = ym === currentYM();
-  $('#m-eyebrow').textContent = monthName(ym);
-  $('#m-km').innerHTML = `${fmtKm(total)} <small>km</small>`;
-  $('#m-sub').textContent = `von ${fmtKm(free)} Freikilometern · ${trips.length} ${trips.length === 1 ? 'Fahrt' : 'Fahrten'}`;
-  $('#m-chart').innerHTML = chartSVG(ym, trips, isCurrent ? new Date().getDate() : (ym > currentYM() ? 0 : daysIn(ym)));
-  $('#m-cards').innerHTML = cards([
-    ['Zu zahlen', fmtEur(cost)],
-    ['Mehrkilometer', `${fmtKm(extra)} km`],
-    ['Ø pro Fahrt', trips.length ? `${fmtKm(total / trips.length)} km` : '—'],
-    ['Preis', `${state.settings.pricePerKm.toLocaleString('de-DE', { minimumFractionDigits: 2 })} €/km`],
-  ]);
-  $('#m-count').textContent = trips.length ? `${trips.length}` : '';
-  $('#m-list').innerHTML = trips.length
-    ? [...trips].reverse().map(tripRow).join('')
-    : `<div class="empty"><b>Keine Fahrten</b>In diesem Monat wurde nichts eingetragen.</div>`;
-  const active = $('#m-chips .chip.active');
-  if (active) active.scrollIntoView({ inline: 'nearest', block: 'nearest' });
-}
 
-function renderProfile() {
-  const s = state.settings;
-  $('#p-name').textContent = s.name || 'Fahrtenbuch';
-  $('#p-cards').innerHTML = cards([
-    ['Freikilometer', `${fmtKm(s.freeKm)} km`],
-    ['Preis', `${s.pricePerKm.toLocaleString('de-DE', { minimumFractionDigits: 2 })} €/km`],
-    ['Fahrten', `${state.trips.length}`],
-    ['Gesamt', `${fmtKm(sumKm(state.trips))} km`],
-  ]);
-}
+  $('#h-month').textContent = ym.slice(0, 4) === currentYM().slice(0, 4) ? monthOnly(ym) : monthName(ym);
+  $('#btn-next-month').disabled = isCurrent;
+  $('#h-km').innerHTML = `${fmtKm(total)} <small>km</small>`;
 
-function cards(items) {
-  return items.map(([k, v]) => `<div class="card"><div class="k">${k}</div><div class="v num">${esc(v)}</div></div>`).join('');
+  if (isCurrent) {
+    const day = new Date().getDate();
+    const diff = free / days * day - total;
+    const rest = Math.max(0, free - total);
+    $('#h-delta').innerHTML = diff >= 0
+      ? `${icon('down')} ${fmtKm(diff)} km unter Tagesbudget`
+      : `${icon('up')} ${fmtKm(-diff)} km über Tagesbudget`;
+    $('#h-sub').textContent = extra > 0
+      ? `${fmtKm(extra)} km über den Freikilometern · ${fmtEur(cost)}`
+      : `Noch ${fmtKm(rest)} km frei · ${fmtKm(rest / Math.max(1, days - day + 1))} km pro Tag`;
+    $('#h-chart').innerHTML = chartSVG(ym, trips, day);
+  } else {
+    $('#h-delta').innerHTML = extra > 0
+      ? `${icon('up')} ${fmtKm(extra)} km über den Freikilometern`
+      : `von ${fmtKm(free)} km frei`;
+    $('#h-sub').textContent = `${fmtEur(cost)} zu zahlen`;
+    $('#h-chart').innerHTML = chartSVG(ym, trips, days);
+  }
+
+  const recent = [...trips].reverse().slice(0, 3);
+  $('#btn-all').style.visibility = trips.length > 3 ? 'visible' : 'hidden';
+  $('#btn-all').textContent = `Alle ${trips.length}`;
+  $('#h-list').innerHTML = recent.length ? recent.map(tripRow).join('')
+    : `<div class="empty">${state.trips.length ? 'Keine Fahrten in diesem Monat.' : 'Noch keine Fahrten. Importiere deine CSV-Dateien über das Zahnrad oben rechts.'}</div>`;
 }
 
 function tripRow(t) {
-  const letter = esc((t.purpose.trim()[0] || '?').toUpperCase());
-  const odo = t.km_end ? ` · bis ${fmtOdo(t.km_end)}` : '';
   return `<button class="row" data-trip="${t.id}">
-    <span class="ic">${letter}</span>
-    <span class="main"><div class="t">${esc(t.purpose)}</div><div class="s num">${shortDate(t.date)}${odo}</div></span>
+    <span class="main"><div class="t">${esc(t.purpose)}</div><div class="s">${relDate(t.date)}</div></span>
     <span class="r num">${fmtKm(tripKm(t))} km</span>
   </button>`;
+}
+
+// Alle Fahrten des Monats, antippen zum Bearbeiten
+function allTripsScreen(ym) {
+  return {
+    label: 'Fahrten', title: monthName(ym), list: true,
+    mount(el) {
+      const trips = [...monthStats(ym).trips].reverse();
+      el.insertAdjacentHTML('beforeend', `<div class="summary">${trips.map(tripRow).join('')}</div>`);
+      el.querySelectorAll('[data-trip]').forEach(b => b.addEventListener('click', e => {
+        e.stopPropagation();
+        const t = state.trips.find(x => x.id === Number(b.dataset.trip));
+        if (t) { setEditDraft(t); push(screenSummary()); }
+      }));
+    },
+    next: { label: 'Nachtragen', icon: 'plus', run: () => { newDraft(); push(screenStart(false)); } },
+  };
 }
 
 // Kumulierte Kilometer im Monat vs. Freikilometer-Budget
@@ -631,22 +527,19 @@ function chartSVG(ym, trips, uptoDay) {
 
 // ── Navigation ───────────────────────────────────────────────────────────────
 document.addEventListener('click', e => {
-  const v = e.target.closest('[data-view]');
-  if (v) { state.view = v.dataset.view; render(); window.scrollTo({ top: 0 }); return; }
-  const m = e.target.closest('[data-month]');
-  if (m) { state.month = m.dataset.month; renderMonth(); return; }
+  if (e.target.closest('#sheet')) return;
   const t = e.target.closest('[data-trip]');
   if (t) { const trip = state.trips.find(x => x.id === Number(t.dataset.trip)); if (trip) startEdit(trip); return; }
   const a = e.target.closest('[data-action]');
-  if (!a) return;
+  if (!a || a.disabled) return;
   ({
     'primary': () => state.open ? finishTrip() : startTrip(),
     'open-trip': openTripDetails,
-    'new': startNew,
-    'export': openExport,
-    'sheet-conditions': () => openSheet(conditionsScreen()),
-    'sheet-data': () => openSheet(dataScreen()),
-    'sheet-account': () => openSheet(accountScreen()),
+    'all': () => openSheet(allTripsScreen(state.month)),
+    'export': () => openSheet(exportScreen(state.month)),
+    'settings': () => openSheet(settingsScreen()),
+    'prev': () => { state.month = shiftMonth(state.month, -1); render(); },
+    'next': () => { if (state.month < currentYM()) { state.month = shiftMonth(state.month, 1); render(); } },
   })[a.dataset.action]?.();
 });
 
@@ -817,12 +710,14 @@ function startTrip() {
   draft = { mode: 'open', date: todayIso(), purpose: '', start: lastOdo(), end: '' };
   openSheet(screenStart(false));
 }
-function startNew() {
+function newDraft() {
   draft = { mode: 'new', id: null, date: todayIso(), purpose: '', start: lastOdo(), end: '', km: 0 };
-  openSheet(screenStart(false));
+}
+function setEditDraft(t) {
+  draft = { mode: 'edit', id: t.id, date: t.date, purpose: t.purpose, start: t.km_start ? String(t.km_start) : '', end: t.km_end ? String(t.km_end) : '', km: t.km };
 }
 function startEdit(t) {
-  draft = { mode: 'edit', id: t.id, date: t.date, purpose: t.purpose, start: t.km_start ? String(t.km_start) : '', end: t.km_end ? String(t.km_end) : '', km: t.km };
+  setEditDraft(t);
   openSheet(screenSummary());
 }
 function draftFromOpen() {
@@ -984,7 +879,6 @@ function screenPurpose(fromSummary) {
       const paint = () => {
         $('#p-sug').innerHTML = purposeSuggestions(touched ? val : '').map(p => `
           <button class="row" data-pick="${esc(p)}">
-            <span class="ic">${esc(p[0].toUpperCase())}</span>
             <span class="main"><div class="t">${esc(p)}</div></span>
             ${chev()}
           </button>`).join('');
@@ -1150,63 +1044,22 @@ function listScreen({ label, title, rows, after }) {
 
 const fmtPrice = p => p.toLocaleString('de-DE', { minimumFractionDigits: 2 });
 
-function conditionsScreen() {
+function settingsScreen() {
   return listScreen({
-    title: 'Konditionen',
+    title: 'Einstellungen',
     rows: () => [
       { t: 'Freikilometer', s: `${fmtKm(state.settings.freeKm)} km pro Monat`, go: () => push(numberScreen({
-        label: 'Konditionen', title: 'Freikilometer pro Monat', unit: 'Kilometer pro Monat',
+        label: 'Einstellungen', title: 'Freikilometer pro Monat', unit: 'Kilometer pro Monat',
         value: String(state.settings.freeKm), save: v => saveSettings({ freeKm: Math.max(0, Math.round(v)) }),
       })) },
       { t: 'Preis pro Mehrkilometer', s: `${fmtPrice(state.settings.pricePerKm)} € pro Kilometer`, go: () => push(numberScreen({
-        label: 'Konditionen', title: 'Preis pro Mehrkilometer', unit: 'Euro pro Kilometer', decimal: true,
+        label: 'Einstellungen', title: 'Preis pro Mehrkilometer', unit: 'Euro pro Kilometer', decimal: true,
         value: fmtPrice(state.settings.pricePerKm), save: v => saveSettings({ pricePerKm: Math.max(0, v) }),
       })) },
+      { t: 'CSV importieren', s: 'Doppelte Fahrten werden übersprungen', go: () => $('#file-in').click() },
+      { t: 'Alle Fahrten sichern', s: `${state.trips.length} Fahrten als CSV`, go: exportBackup },
     ],
-    after: 'Fahrten über die Freikilometer hinaus werden in der Monatsabrechnung mit diesem Preis berechnet.',
   });
-}
-
-function dataScreen() {
-  return listScreen({
-    title: 'Daten',
-    rows: () => [
-      { t: 'CSV importieren', s: 'Monatsdateien einspielen', go: () => $('#file-in').click() },
-      { t: 'Alle Fahrten sichern', s: `${state.trips.length} Fahrten als CSV-Datei`, go: exportBackup },
-      { t: 'Monat exportieren', s: 'PDF-Abrechnung oder CSV', go: () => push(exportScreen(currentYM())) },
-    ],
-    after: 'Fahrten, die schon vorhanden sind, werden beim Import automatisch übersprungen.',
-  });
-}
-
-function accountScreen() {
-  return listScreen({
-    title: 'Konto',
-    rows: () => [
-      { t: 'Name', s: state.settings.name || '—', go: () => push(nameScreen()) },
-    ],
-    after: 'Der Name steht auf den PDF-Abrechnungen.',
-  });
-}
-
-function nameScreen() {
-  let v = state.settings.name;
-  const save = async () => {
-    await saveSettings({ name: v.trim() });
-    render();
-    pop();
-  };
-  return {
-    label: 'Konto', title: 'Name',
-    mount(el) {
-      el.insertAdjacentHTML('beforeend', `<input class="text-in" id="n-in" type="text" autocomplete="name" autocapitalize="words" enterkeyhint="done" value="${esc(v)}">`);
-      const inp = $('#n-in');
-      inp.addEventListener('input', () => { v = inp.value; updateFoot(); });
-      inp.addEventListener('keydown', e => { if (e.key === 'Enter' && v.trim()) { e.preventDefault(); save(); } });
-      setTimeout(() => inp.focus(), 350);
-    },
-    next: { label: 'Speichern', icon: 'check', enabled: () => !!v.trim(), run: save },
-  };
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
@@ -1228,10 +1081,6 @@ $('#file-in').addEventListener('change', async e => {
   if (added || skipped) toast(`${added} Fahrten importiert` + (skipped ? ` · ${skipped} schon da` : ''));
 });
 
-function openExport() {
-  openSheet(exportScreen(state.view === 'month' ? state.month : currentYM()));
-}
-
 function exportScreen(ym) {
   const row = (action, ic, t, s) => `
     <button class="row" data-x="${action}">
@@ -1249,7 +1098,7 @@ function exportScreen(ym) {
           ${row('pdf', 'doc', 'PDF-Abrechnung', `${trips.length} Fahrten · ${fmtKm(total)} km`)}
           ${row('csv', 'table', 'CSV-Datei', 'Für Excel & zum Wiedereinspielen')}
         </div>
-        <p class="fine">Anderen Monat exportieren? Wähle ihn vorher im Tab <b>Monat</b> aus.</p>`);
+        <p class="fine">Anderen Monat? Auf der Startseite mit ‹ › wechseln.</p>`);
       el.querySelectorAll('[data-x]').forEach(b => b.addEventListener('click', async () => {
         if (b.dataset.x === 'csv') exportCSV(ym); else await exportPDF(ym);
         closeSheet();
@@ -1319,7 +1168,7 @@ async function exportPDF(ym) {
   const gray = [150, 155, 160];
 
   doc.setFont('helvetica', 'normal'); doc.setFontSize(10); doc.setTextColor(...gray);
-  doc.text(`Fahrtenbuch ${s.name}`.trim(), 20, 22);
+  doc.text('Fahrtenbuch', 20, 22);
   doc.setFont('helvetica', 'bold'); doc.setFontSize(24); doc.setTextColor(0);
   doc.text(monthName(ym), 20, 33);
 
@@ -1359,7 +1208,7 @@ async function exportPDF(ym) {
 
   const ph = doc.internal.pageSize.height;
   doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(...gray);
-  doc.text(`Erstellt am ${new Date().toLocaleDateString('de-DE')} · Fahrtenbuch ${s.name}`.trim(), 20, ph - 12);
+  doc.text(`Erstellt am ${new Date().toLocaleDateString('de-DE')} · Fahrtenbuch`, 20, ph - 12);
 
   const name = `Fahrtenbuch_${ym}.pdf`;
   const blob = doc.output('blob');

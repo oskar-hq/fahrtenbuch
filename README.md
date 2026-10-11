@@ -7,8 +7,8 @@ Node.js + Express + SQLite, läuft im Proxmox-LXC hinter einem Cloudflare Tunnel
 - **Fahrt beenden** am Ziel: alles bis auf die letzten zwei Ziffern steht schon da (Fahrten unter 100 km),
   für längere Fahrten einfach mit ← weiter zurück löschen
 - **Nachtragen** und **Bearbeiten** für alles andere, immer nur eine Sache auf dem Bildschirm
-- Tagesbudget und Verlauf gegen die Freikilometer
-- Monatsabrechnung mit Mehrkilometern und Kosten, Export als PDF oder CSV
+- Ein Bildschirm: Kilometer im Monat, Verlauf gegen die Freikilometer, die letzten drei Fahrten; Monate mit ‹ › wechseln
+- Monatsabrechnung als PDF oder CSV
 - CSV-Import (auch die Dateien der alten Version), Duplikate werden übersprungen
 
 ```bash
