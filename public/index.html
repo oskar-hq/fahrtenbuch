@@ -30,7 +30,7 @@
     --red: #e0312f;
     --safe-top: env(safe-area-inset-top, 0px);
     --safe-bottom: env(safe-area-inset-bottom, 0px);
-    --pad: 24px;
+    --pad: 28px;
     --ease: cubic-bezier(.32,.72,0,1);
     --font: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Inter", "Helvetica Neue", system-ui, sans-serif;
   }
@@ -46,16 +46,16 @@
   input { font: inherit; color: inherit; }
   .num { font-variant-numeric: tabular-nums; }
 
-  .app { max-width: 560px; margin: 0 auto; padding: calc(var(--safe-top) + 28px) var(--pad) calc(var(--safe-bottom) + 140px); }
+  .app { max-width: 520px; margin: 0 auto; padding: calc(var(--safe-top) + 26px) var(--pad) calc(var(--safe-bottom) + 120px); }
 
   /* ── Kopf ───────────────────────────────────────────── */
-  .top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 44px; }
-  .tabs { display: flex; gap: 18px; }
-  .tab { font-size: 34px; font-weight: 700; letter-spacing: -0.025em; color: var(--gray-2); transition: color .2s; padding: 0; }
+  .top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 48px; }
+  .tabs { display: flex; gap: 14px; }
+  .tab { font-size: 24px; font-weight: 700; letter-spacing: -0.02em; color: var(--gray-2); transition: color .2s; padding: 0; }
   .tab.active { color: var(--ink); }
   .avatar {
-    width: 48px; height: 48px; border-radius: 50%; background: var(--gray-2); color: #fff;
-    font-weight: 700; font-size: 19px; display: grid; place-items: center; transition: background .2s;
+    width: 36px; height: 36px; border-radius: 50%; background: var(--gray-2); color: #fff;
+    font-weight: 700; font-size: 14px; display: grid; place-items: center; transition: background .2s;
   }
   .avatar.active { background: var(--ink); }
 
@@ -64,91 +64,101 @@
   @keyframes fade { from { opacity: 0; transform: translateY(6px); } }
 
   /* ── Kennzahl ───────────────────────────────────────── */
-  .eyebrow { font-size: 17px; font-weight: 600; color: var(--gray); margin-bottom: 6px; }
-  .hero { font-size: 44px; font-weight: 700; letter-spacing: -0.03em; line-height: 1.05; }
-  .hero small { font-size: 26px; letter-spacing: -0.02em; }
-  .delta { margin-top: 10px; font-size: 15px; font-weight: 600; display: flex; align-items: center; gap: 6px; }
-  .delta svg { width: 14px; height: 14px; }
+  .eyebrow { font-size: 13px; font-weight: 600; color: var(--gray); margin-bottom: 6px; }
+  .hero { font-size: 30px; font-weight: 700; letter-spacing: -0.025em; line-height: 1.1; }
+  .hero small { font-size: 18px; letter-spacing: -0.01em; }
+  .delta { margin-top: 8px; font-size: 13px; font-weight: 600; display: flex; align-items: center; gap: 5px; }
+  .delta svg { width: 12px; height: 12px; }
   .delta.muted { color: var(--gray); }
 
+  /* ── Laufende Fahrt ─────────────────────────────────── */
+  .live {
+    display: flex; align-items: center; gap: 14px; width: 100%; text-align: left;
+    margin: 0 0 40px; padding: 16px 18px; border-radius: 18px; background: var(--ink); color: #fff;
+    box-shadow: 0 8px 24px rgba(0,0,0,.14); transition: transform .15s var(--ease);
+  }
+  .live:active { transform: scale(.98); }
+  .live .dot { width: 8px; height: 8px; border-radius: 50%; background: #fff; flex: 0 0 auto; animation: pulse 1.6s ease-in-out infinite; }
+  @keyframes pulse { 50% { opacity: .25; } }
+  .live .main { flex: 1; min-width: 0; }
+  .live .t { font-size: 15px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .live .s { font-size: 12px; font-weight: 500; color: rgba(255,255,255,.6); margin-top: 3px; }
+  .live svg { width: 16px; height: 16px; opacity: .6; flex: 0 0 auto; }
+
   /* ── Diagramm ───────────────────────────────────────── */
-  .chart { margin: 28px -4px 8px; }
+  .chart { margin: 32px 0 4px; }
   .chart svg { display: block; width: 100%; height: auto; overflow: visible; }
-  .chart text { font-family: var(--font); font-size: 10px; fill: var(--gray); font-weight: 600; }
+  .chart text { font-family: var(--font); font-size: 9px; fill: var(--gray); font-weight: 600; }
   .chart .lbl-strong { fill: var(--ink); }
 
   /* ── Karten ─────────────────────────────────────────── */
   .cards {
-    display: flex; gap: 12px; overflow-x: auto; scroll-snap-type: x mandatory;
-    margin: 28px calc(-1 * var(--pad)) 0; padding: 12px var(--pad) 20px; scrollbar-width: none;
+    display: flex; gap: 10px; overflow-x: auto; scroll-snap-type: x mandatory;
+    margin: 28px calc(-1 * var(--pad)) 0; padding: 10px var(--pad) 18px; scrollbar-width: none;
   }
   .cards::-webkit-scrollbar { display: none; }
   .card {
-    flex: 0 0 auto; min-width: 140px; height: 112px; border-radius: 22px; padding: 18px;
-    background: #fff; box-shadow: 0 2px 18px rgba(0,0,0,.06), 0 0 0 1px rgba(0,0,0,.025);
+    flex: 0 0 auto; min-width: 112px; height: 84px; border-radius: 16px; padding: 14px;
+    background: #fff; box-shadow: 0 2px 14px rgba(0,0,0,.05), 0 0 0 1px rgba(0,0,0,.025);
     display: flex; flex-direction: column; justify-content: space-between; scroll-snap-align: start; text-align: left;
   }
-  .card .k { font-size: 15px; font-weight: 600; color: var(--gray); }
-  .card .v { font-size: 19px; font-weight: 700; letter-spacing: -0.01em; white-space: nowrap; }
+  .card .k { font-size: 12px; font-weight: 600; color: var(--gray); }
+  .card .v { font-size: 15px; font-weight: 700; white-space: nowrap; }
 
   /* ── Listen ─────────────────────────────────────────── */
-  .section { margin-top: 32px; }
-  .section-head { display: flex; align-items: center; justify-content: space-between; font-size: 20px; font-weight: 700; letter-spacing: -0.01em; margin-bottom: 6px; }
-  .section-head .aside { font-size: 15px; color: var(--gray); font-weight: 600; }
-  .month-label { font-size: 15px; font-weight: 600; color: var(--gray); margin: 26px 0 2px; display: flex; justify-content: space-between; }
+  .section { margin-top: 36px; }
+  .section-head { display: flex; align-items: center; justify-content: space-between; font-size: 16px; font-weight: 700; margin-bottom: 4px; }
+  .section-head .aside { font-size: 13px; color: var(--gray); font-weight: 600; }
+  .section-head button.aside { color: var(--ink); display: flex; align-items: center; gap: 4px; }
+  .section-head button.aside svg { width: 14px; height: 14px; }
+  .month-label { font-size: 12px; font-weight: 600; color: var(--gray); margin: 24px 0 2px; display: flex; justify-content: space-between; }
 
   .row {
-    display: flex; align-items: center; gap: 16px; width: 100%; padding: 14px 0; text-align: left;
+    display: flex; align-items: center; gap: 14px; width: 100%; padding: 11px 0; text-align: left;
     transition: opacity .15s;
   }
   .row:active { opacity: .5; }
   .ic {
-    flex: 0 0 auto; width: 44px; height: 44px; border-radius: 50%; background: var(--soft);
-    display: grid; place-items: center; font-weight: 700; font-size: 17px;
+    flex: 0 0 auto; width: 34px; height: 34px; border-radius: 50%; background: var(--soft);
+    display: grid; place-items: center; font-weight: 700; font-size: 13px;
   }
-  .ic svg { width: 22px; height: 22px; }
+  .ic svg { width: 16px; height: 16px; }
   .ic.dark { background: var(--ink); color: #fff; }
   .row .main { flex: 1; min-width: 0; }
-  .row .t { font-size: 17px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .row .s { font-size: 15px; font-weight: 500; color: var(--gray); margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .row .r { font-size: 17px; font-weight: 700; white-space: nowrap; }
-  .row .chev { color: var(--gray-2); width: 20px; height: 20px; flex: 0 0 auto; }
-  .row.danger .t { color: var(--red); }
-  .row.danger .ic { background: var(--red); color: #fff; }
+  .row .t { font-size: 14px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .row .s { font-size: 12px; font-weight: 500; color: var(--gray); margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .row .r { font-size: 14px; font-weight: 700; white-space: nowrap; }
+  .row .chev { color: var(--gray-2); width: 16px; height: 16px; flex: 0 0 auto; }
 
-  .empty { padding: 40px 0; color: var(--gray); font-size: 15px; font-weight: 500; line-height: 1.5; }
-  .empty b { display: block; color: var(--ink); font-size: 17px; }
+  .empty { padding: 36px 0; color: var(--gray); font-size: 13px; font-weight: 500; line-height: 1.5; }
+  .empty b { display: block; color: var(--ink); font-size: 14px; }
 
   /* ── Monats-Chips ───────────────────────────────────── */
-  .chips { display: flex; gap: 6px; overflow-x: auto; margin: 0 calc(-1 * var(--pad)) 28px; padding: 0 var(--pad); scrollbar-width: none; }
+  .chips { display: flex; gap: 4px; overflow-x: auto; margin: 0 calc(-1 * var(--pad)) 32px; padding: 0 var(--pad); scrollbar-width: none; }
   .chips::-webkit-scrollbar { display: none; }
-  .chip { flex: 0 0 auto; padding: 8px 14px; border-radius: 10px; font-size: 14px; font-weight: 700; color: var(--gray); }
+  .chip { flex: 0 0 auto; padding: 6px 11px; border-radius: 8px; font-size: 12px; font-weight: 700; color: var(--gray); }
   .chip.active { background: var(--soft); color: var(--ink); }
 
-  .bar { height: 4px; border-radius: 4px; background: var(--line); margin-top: 22px; overflow: hidden; }
-  .bar i { display: block; height: 100%; background: var(--ink); border-radius: 4px; transition: width .5s var(--ease); }
-
-  .foot-note { margin-top: 36px; font-size: 14px; color: var(--gray); font-weight: 500; line-height: 1.6; }
+  .foot-note { margin-top: 36px; font-size: 12px; color: var(--gray); font-weight: 500; line-height: 1.6; }
   .foot-note b { color: var(--ink); }
 
   /* ── Untere Leiste ──────────────────────────────────── */
   .dock {
     position: fixed; left: 0; right: 0; bottom: 0; z-index: 20;
-    padding: 28px var(--pad) calc(var(--safe-bottom) + 18px);
+    padding: 24px var(--pad) calc(var(--safe-bottom) + 16px);
     background: linear-gradient(to bottom, rgba(255,255,255,0), #fff 34%);
     pointer-events: none;
   }
-  .dock-inner { max-width: 512px; margin: 0 auto; display: flex; gap: 12px; }
-  .dock .pill { padding: 0 20px; }
-  .dock .pill:first-child { flex: .8; }
+  .dock-inner { max-width: 472px; margin: 0 auto; display: flex; gap: 10px; }
+  .dock .pill:first-child { flex: .75; }
   .pill {
-    pointer-events: auto; flex: 1; height: 64px; border-radius: 22px; background: var(--ink); color: #fff;
-    display: flex; align-items: center; justify-content: space-between; padding: 0 24px;
-    font-size: 17px; font-weight: 700; white-space: nowrap; gap: 10px; box-shadow: 0 10px 30px rgba(0,0,0,.18);
+    pointer-events: auto; flex: 1; height: 52px; border-radius: 16px; background: var(--ink); color: #fff;
+    display: flex; align-items: center; justify-content: space-between; padding: 0 18px;
+    font-size: 15px; font-weight: 700; white-space: nowrap; gap: 10px; box-shadow: 0 8px 24px rgba(0,0,0,.16);
     transition: transform .15s var(--ease), opacity .2s;
   }
   .pill:active { transform: scale(.97); }
-  .pill svg { width: 22px; height: 22px; }
+  .pill svg { width: 18px; height: 18px; }
   .pill:disabled { opacity: .25; box-shadow: none; }
 
   /* ── Sheet ──────────────────────────────────────────── */
@@ -159,81 +169,82 @@
     display: flex; justify-content: center; pointer-events: none;
   }
   .sheet-card {
-    pointer-events: auto; width: 100%; max-width: 560px; margin-top: calc(var(--safe-top) + 10px);
-    background: #fff; border-radius: 22px 22px 0 0; display: flex; flex-direction: column;
+    pointer-events: auto; width: 100%; max-width: 520px; margin-top: calc(var(--safe-top) + 10px);
+    background: #fff; border-radius: 18px 18px 0 0; display: flex; flex-direction: column;
     transform: translateY(105%); transition: transform .42s var(--ease); box-shadow: 0 -10px 40px rgba(0,0,0,.08);
     overflow: hidden;
   }
   .sheet:not(.open) .sheet-card { visibility: hidden; transition: transform .42s var(--ease), visibility 0s .42s; }
   .sheet.open .sheet-card { transform: none; }
   .sheet.dragging .sheet-card { transition: none; }
-  .grab { flex: 0 0 auto; padding: 12px 0 8px; display: flex; justify-content: center; touch-action: none; cursor: grab; }
-  .grab i { width: 38px; height: 5px; border-radius: 5px; background: var(--gray-3); }
-  .screen { flex: 1; min-height: 0; display: flex; flex-direction: column; padding: 18px var(--pad) 0; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+  .grab { flex: 0 0 auto; padding: 10px 0 8px; display: flex; justify-content: center; touch-action: none; cursor: grab; }
+  .grab i { width: 34px; height: 4px; border-radius: 4px; background: var(--gray-3); }
+  .screen { flex: 1; min-height: 0; display: flex; flex-direction: column; padding: 22px var(--pad) 0; overflow-y: auto; -webkit-overflow-scrolling: touch; }
   .screen.in-fwd { animation: inFwd .32s var(--ease); }
   .screen.in-back { animation: inBack .32s var(--ease); }
-  @keyframes inFwd { from { opacity: 0; transform: translateX(28px); } }
-  @keyframes inBack { from { opacity: 0; transform: translateX(-28px); } }
-  .s-label { font-size: 14px; font-weight: 600; color: var(--gray); }
-  .s-title { font-size: 30px; font-weight: 700; letter-spacing: -0.025em; line-height: 1.15; margin-top: 14px; }
+  @keyframes inFwd { from { opacity: 0; transform: translateX(24px); } }
+  @keyframes inBack { from { opacity: 0; transform: translateX(-24px); } }
+  .s-label { font-size: 12px; font-weight: 600; color: var(--gray); }
+  .s-title { font-size: 22px; font-weight: 700; letter-spacing: -0.02em; line-height: 1.2; margin-top: 10px; }
 
-  .display { flex: 1; min-height: 120px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; }
-  .display .val { font-size: 60px; font-weight: 700; letter-spacing: -0.03em; line-height: 1; white-space: nowrap; }
+  .display { flex: 1; min-height: 110px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; }
+  .display .val { font-size: 42px; font-weight: 700; letter-spacing: -0.02em; line-height: 1; white-space: nowrap; }
   .display .val .ghost { color: var(--gray-3); }
+  .display .val .slot { color: var(--gray-3); }
   .display .val.empty-val { color: var(--gray-3); }
-  .display .hint { font-size: 15px; font-weight: 600; color: var(--gray); text-align: center; min-height: 20px; }
+  .display .hint { font-size: 13px; font-weight: 600; color: var(--gray); text-align: center; min-height: 18px; }
   .display .hint.ok { color: var(--ink); }
   .display .hint.warn { color: var(--red); }
 
-  .keypad { display: grid; grid-template-columns: repeat(3, 1fr); padding: 4px 0 8px; }
-  .key { height: 66px; font-size: 30px; font-weight: 700; display: grid; place-items: center; border-radius: 18px; transition: background .12s; }
+  .keypad { display: grid; grid-template-columns: repeat(3, 1fr); padding: 0 8px 4px; }
+  .key { height: 58px; font-size: 24px; font-weight: 600; display: grid; place-items: center; border-radius: 14px; transition: background .12s; }
   .key:active { background: var(--soft); }
-  .key svg { width: 28px; height: 28px; }
+  .key svg { width: 22px; height: 22px; }
 
-  .sheet-foot { flex: 0 0 auto; display: flex; gap: 12px; align-items: center; padding: 12px var(--pad) calc(var(--safe-bottom) + 18px); }
+  .sheet-foot { flex: 0 0 auto; display: flex; gap: 10px; align-items: center; padding: 12px var(--pad) calc(var(--safe-bottom) + 16px); }
   .sq {
-    width: 64px; height: 64px; border-radius: 20px; background: #fff; flex: 0 0 auto;
-    box-shadow: 0 4px 20px rgba(0,0,0,.07), 0 0 0 1px rgba(0,0,0,.03); display: grid; place-items: center;
+    width: 52px; height: 52px; border-radius: 16px; background: #fff; flex: 0 0 auto;
+    box-shadow: 0 4px 16px rgba(0,0,0,.07), 0 0 0 1px rgba(0,0,0,.03); display: grid; place-items: center;
   }
-  .sq svg { width: 20px; height: 20px; }
+  .sq svg { width: 16px; height: 16px; }
   .sq:active { background: var(--soft); }
-  .sheet-foot .pill { flex: 0 1 230px; margin-left: auto; box-shadow: 0 10px 30px rgba(0,0,0,.15); }
+  .sheet-foot .pill { flex: 0 1 200px; margin-left: auto; box-shadow: 0 8px 24px rgba(0,0,0,.14); }
 
   .text-in {
-    width: 100%; border: 0; outline: none; background: none; font-size: 30px; font-weight: 700; letter-spacing: -0.02em;
-    padding: 26px 0 14px; border-bottom: 2px solid var(--ink); border-radius: 0; caret-color: var(--ink);
+    width: 100%; border: 0; outline: none; background: none; font-size: 20px; font-weight: 700;
+    padding: 24px 0 10px; border-bottom: 1.5px solid var(--ink); border-radius: 0; caret-color: var(--ink);
   }
   .text-in::placeholder { color: var(--gray-3); }
-  .suggest { margin-top: 12px; padding-bottom: 12px; }
+  .suggest { margin-top: 10px; padding-bottom: 12px; }
 
-  .summary { margin-top: 30px; }
+  .summary { margin-top: 28px; }
   .sum-row {
     position: relative; display: flex; align-items: center; justify-content: space-between; gap: 16px;
-    width: 100%; padding: 15px 0; font-size: 17px; text-align: left;
+    width: 100%; padding: 12px 0; font-size: 14px; text-align: left;
   }
-  .sum-row .k { color: var(--gray); font-weight: 600; display: flex; align-items: center; gap: 6px; }
-  .sum-row .k svg { width: 16px; height: 16px; color: var(--gray-2); }
+  .sum-row .k { color: var(--gray); font-weight: 600; display: flex; align-items: center; gap: 4px; }
+  .sum-row .k svg { width: 13px; height: 13px; color: var(--gray-2); }
   .sum-row .v { font-weight: 700; text-align: right; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .sum-row .v.warn { color: var(--red); }
   button.sum-row:active { opacity: .5; }
   .sum-row input[type=date] { position: absolute; inset: 0; opacity: 0; width: 100%; height: 100%; -webkit-appearance: none; appearance: none; }
-  .fine { margin-top: 26px; font-size: 14px; color: var(--gray); font-weight: 500; line-height: 1.55; }
+  .fine { margin-top: 24px; font-size: 12px; color: var(--gray); font-weight: 500; line-height: 1.55; }
   .fine b { color: var(--ink); }
-  .del-btn { margin: 26px 0 10px; font-size: 17px; font-weight: 700; color: var(--red); display: flex; align-items: center; gap: 14px; }
-  .del-btn .ic { background: var(--red); color: #fff; width: 36px; height: 36px; }
-  .del-btn .ic svg { width: 18px; height: 18px; }
+  .del-btn { margin: 24px 0 10px; font-size: 14px; font-weight: 700; color: var(--red); display: flex; align-items: center; gap: 12px; }
+  .del-btn .ic { background: var(--red); color: #fff; width: 30px; height: 30px; }
+  .del-btn .ic svg { width: 14px; height: 14px; }
 
   /* ── Toast ──────────────────────────────────────────── */
   .toast {
     position: fixed; top: calc(var(--safe-top) + 10px); left: 50%; z-index: 100;
     transform: translate(-50%, -140%); transition: transform .45s var(--ease), visibility 0s .45s; visibility: hidden;
-    background: var(--ink); color: #fff; border-radius: 99px; padding: 8px 22px 8px 8px;
-    display: flex; align-items: center; gap: 12px; font-size: 15px; font-weight: 600; white-space: nowrap;
+    background: var(--ink); color: #fff; border-radius: 99px; padding: 6px 18px 6px 6px;
+    display: flex; align-items: center; gap: 10px; font-size: 13px; font-weight: 600; white-space: nowrap;
     box-shadow: 0 10px 30px rgba(0,0,0,.2); max-width: calc(100vw - 32px);
   }
   .toast.show { transform: translate(-50%, 0); visibility: visible; transition: transform .45s var(--ease); }
-  .toast .ti { width: 30px; height: 30px; border-radius: 50%; background: #fff; color: var(--ink); display: grid; place-items: center; flex: 0 0 auto; }
-  .toast .ti svg { width: 16px; height: 16px; }
+  .toast .ti { width: 24px; height: 24px; border-radius: 50%; background: #fff; color: var(--ink); display: grid; place-items: center; flex: 0 0 auto; }
+  .toast .ti svg { width: 13px; height: 13px; }
   .toast.error .ti { background: var(--red); color: #fff; }
   .toast span { overflow: hidden; text-overflow: ellipsis; }
 
@@ -241,7 +252,7 @@
     *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
   }
   @media (min-width: 600px) {
-    .sheet-card { margin-top: 40px; margin-bottom: 40px; border-radius: 22px; }
+    .sheet-card { margin-top: 40px; margin-bottom: 40px; border-radius: 18px; }
   }
 </style>
 </head>
@@ -258,13 +269,14 @@
 
   <!-- FAHRTEN -->
   <section class="view active" id="view-trips">
+    <div id="h-live"></div>
     <div class="eyebrow" id="h-eyebrow">&nbsp;</div>
     <div class="hero num" id="h-km">—</div>
     <div class="delta" id="h-delta">&nbsp;</div>
     <div class="chart" id="h-chart"></div>
     <div class="cards" id="h-cards"></div>
     <div class="section">
-      <div class="section-head">Fahrten</div>
+      <div class="section-head">Fahrten <button class="aside" data-action="new"><span data-icon="plus"></span>Nachtragen</button></div>
       <div id="h-list"></div>
     </div>
   </section>
@@ -311,7 +323,7 @@
 <div class="dock">
   <div class="dock-inner">
     <button class="pill" data-action="export"><span>Export</span><span data-icon="share"></span></button>
-    <button class="pill" data-action="new"><span>Neue Fahrt</span><span data-icon="plus"></span></button>
+    <button class="pill" id="dock-main" data-action="primary"><span>Fahrt starten</span><span data-icon="plus"></span></button>
   </div>
 </div>
 
@@ -409,13 +421,15 @@ async function api(method, path, body, raw) {
 const state = {
   trips: [],
   settings: { freeKm: 300, pricePerKm: 0.22, name: '' },
+  open: null,
   view: 'trips',
   month: currentYM(),
 };
 
 async function load() {
-  const [trips, settings] = await Promise.all([api('GET', '/trips'), api('GET', '/settings')]);
+  const [trips, settings, open] = await Promise.all([api('GET', '/trips'), api('GET', '/settings'), api('GET', '/open')]);
   state.trips = trips;
+  state.open = open;
   state.settings = { freeKm: 300, pricePerKm: 0.22, name: '', ...settings };
   render();
 }
@@ -458,12 +472,22 @@ function render() {
   document.querySelectorAll('[data-view]').forEach(b => b.classList.toggle('active', b.dataset.view === state.view));
   document.querySelectorAll('.view').forEach(v => v.classList.toggle('active', v.id === 'view-' + state.view));
   $('#avatar').textContent = (state.settings.name.trim()[0] || 'F').toUpperCase();
+  $('#dock-main').innerHTML = state.open
+    ? `<span>Fahrt beenden</span>${icon('check')}`
+    : `<span>Fahrt starten</span>${icon('plus')}`;
   if (state.view === 'trips') renderHome();
   if (state.view === 'month') renderMonth();
   if (state.view === 'profile') renderProfile();
 }
 
 function renderHome() {
+  const o = state.open;
+  $('#h-live').innerHTML = o ? `
+    <button class="live" data-action="open-trip">
+      <span class="dot"></span>
+      <span class="main"><div class="t">Unterwegs · ${esc(o.purpose)}</div><div class="s num">${relDate(o.date)} · ab ${fmtOdo(o.km_start)}</div></span>
+      ${icon('next')}
+    </button>` : '';
   const ym = currentYM();
   const now = new Date();
   const days = daysIn(ym), day = now.getDate();
@@ -490,7 +514,7 @@ function renderHome() {
 
   const list = $('#h-list');
   if (!state.trips.length) {
-    list.innerHTML = `<div class="empty"><b>Noch keine Fahrten</b>Tippe auf „Neue Fahrt“ oder importiere deine CSV-Dateien über das Profil oben rechts.</div>`;
+    list.innerHTML = `<div class="empty"><b>Noch keine Fahrten</b>Tippe auf „Fahrt starten“ oder importiere deine CSV-Dateien über das Profil oben rechts.</div>`;
     return;
   }
   const groups = new Map();
@@ -559,7 +583,7 @@ function tripRow(t) {
 
 // Kumulierte Kilometer im Monat vs. Freikilometer-Budget
 function chartSVG(ym, trips, uptoDay) {
-  const W = 340, H = 170, L = 0, R = 300, T = 14, B = 140;
+  const W = 340, H = 124, L = 0, R = 300, T = 12, B = 98;
   const days = daysIn(ym), free = state.settings.freeKm;
   const perDay = new Array(days + 1).fill(0);
   trips.forEach(t => { perDay[Number(t.date.slice(8, 10))] += tripKm(t); });
@@ -608,6 +632,8 @@ document.addEventListener('click', e => {
   const a = e.target.closest('[data-action]');
   if (!a) return;
   ({
+    'primary': () => state.open ? finishTrip() : startTrip(),
+    'open-trip': openTripDetails,
     'new': startNew,
     'export': openExport,
     'sheet-conditions': () => openSheet(conditionsScreen()),
@@ -750,45 +776,77 @@ function completeOdo(typed, base) {
   const full = String(cand);
   return { full, ghost: full.length - n };
 }
-function odoHTML(full, ghost) {
+// Tausenderpunkte einfügen und Ziffern grau färben:
+// odoHTML(s, n) → die ersten n Ziffern grau; odoHTML(s, 0, n) → alles ab Position n grau
+function odoHTML(full, ghost, blackUpTo = Infinity) {
   if (!full) return '';
-  // Tausenderpunkte einfügen und die ergänzten Ziffern grau färben
   let out = '';
   for (let i = 0; i < full.length; i++) {
     const fromRight = full.length - i;
-    out += `<span class="${i < ghost ? 'ghost' : ''}">${full[i]}</span>`;
-    if (fromRight > 1 && (fromRight - 1) % 3 === 0) out += `<span class="${i < ghost ? 'ghost' : ''}">.</span>`;
+    const cls = i < ghost || i >= blackUpTo ? 'ghost' : '';
+    out += `<span class="${cls}">${full[i]}</span>`;
+    if (fromRight > 1 && (fromRight - 1) % 3 === 0) out += `<span class="${cls}">.</span>`;
   }
   return out;
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
-// Fahrt erfassen / bearbeiten
+// Fahrt erfassen
+//   Hauptweg:  Fahrt starten (KM-Beginn → Ziel) … später Fahrt beenden (KM-Ende)
+//   Nebenweg:  Fahrt nachtragen (alles auf einmal) und Fahrt bearbeiten
 // ═════════════════════════════════════════════════════════════════════════════
+// draft.mode: 'open' (Fahrt starten), 'open-edit' (laufende Fahrt), 'new' (nachtragen), 'edit'
 let draft = null;
+
+const LABELS = { open: 'Fahrt starten', 'open-edit': 'Unterwegs', new: 'Fahrt nachtragen', edit: 'Fahrt bearbeiten' };
 
 function draftKm(d = draft) {
   if (d.start && d.end) return Number(d.end) - Number(d.start);
   return Number(d.km) || 0;
 }
 
-function startNew() {
-  draft = { id: null, date: todayIso(), purpose: '', start: lastOdo(), end: '', km: 0 };
+function startTrip() {
+  draft = { mode: 'open', date: todayIso(), purpose: '', start: lastOdo(), end: '' };
   openSheet(screenStart(false));
 }
-
+function startNew() {
+  draft = { mode: 'new', id: null, date: todayIso(), purpose: '', start: lastOdo(), end: '', km: 0 };
+  openSheet(screenStart(false));
+}
 function startEdit(t) {
-  draft = { id: t.id, date: t.date, purpose: t.purpose, start: t.km_start ? String(t.km_start) : '', end: t.km_end ? String(t.km_end) : '', km: t.km };
+  draft = { mode: 'edit', id: t.id, date: t.date, purpose: t.purpose, start: t.km_start ? String(t.km_start) : '', end: t.km_end ? String(t.km_end) : '', km: t.km };
   openSheet(screenSummary());
 }
+function draftFromOpen() {
+  const o = state.open;
+  draft = { mode: 'open-edit', date: o.date, purpose: o.purpose, start: String(o.km_start), end: '' };
+}
+// Hauptknopf unten rechts während der Fahrt: direkt zum Endstand
+function finishTrip() {
+  draftFromOpen();
+  openSheet(screenEnd(false, true));
+}
+function openTripDetails() {
+  draftFromOpen();
+  openSheet(screenOpen());
+}
 
-// Schritt 1: KM-Stand Beginn (mit letztem Stand vorbelegt → meist nur „Weiter“)
+async function saveOpen() {
+  state.open = await api('PUT', '/open', { date: draft.date, purpose: draft.purpose.trim(), km_start: draft.start });
+}
+// Änderungen an einer laufenden Fahrt sofort speichern
+async function afterEdit() {
+  if (draft.mode === 'open-edit') { try { await saveOpen(); } catch { return false; } render(); }
+  return true;
+}
+
+// KM-Stand Beginn: mit dem letzten Endstand vorbelegt → meist nur „Weiter“
 function screenStart(fromSummary) {
-  const base = draft.id ? '' : lastOdo();
+  const base = draft.mode === 'open' || draft.mode === 'new' ? lastOdo() : '';
   const compBase = base || draft.start;
   let full = draft.start, ghost = 0;
   return {
-    label: draft.id ? 'Fahrt bearbeiten' : 'Neue Fahrt',
+    label: LABELS[draft.mode],
     title: 'KM-Stand Beginn',
     mount(el) {
       el.insertAdjacentHTML('beforeend', `<div class="display"><div class="val num" id="d-val"></div><div class="hint" id="d-hint"></div></div>`);
@@ -797,9 +855,9 @@ function screenStart(fromSummary) {
         v.className = 'val num' + (full ? '' : ' empty-val');
         v.innerHTML = full ? odoHTML(full, ghost) : '0';
         h.className = 'hint';
-        if (!base || !full) h.textContent = base ? `Letzter Stand ${fmtOdo(base)}` : 'Tippe den Kilometerstand ein';
+        if (!base || !full) h.textContent = base ? `Letzter Stand ${fmtOdo(base)}` : 'Kilometerstand eintippen';
         else if (full === base) h.textContent = 'Wie Ende der letzten Fahrt';
-        else if (Number(full) > Number(base)) { h.textContent = `${fmtKm(full - base)} km seit deiner letzten Fahrt`; }
+        else if (Number(full) > Number(base)) h.textContent = `${fmtKm(full - base)} km seit deiner letzten Fahrt`;
         else { h.textContent = `Kleiner als letzter Stand ${fmtOdo(base)}`; h.className = 'hint warn'; }
       };
       mountKeypad(el, {
@@ -810,45 +868,69 @@ function screenStart(fromSummary) {
     },
     next: {
       enabled: () => !!full && Number(full) > 0,
-      run() {
+      async run() {
         draft.start = full;
-        if (fromSummary) return pop();
-        push(screenEnd(false));
+        if (fromSummary) { if (await afterEdit()) pop(); return; }
+        push(draft.mode === 'open' ? screenPurpose(false) : screenEnd(false));
       },
     },
   };
 }
 
-// Schritt 2: KM-Stand Ende – nur die letzten Ziffern tippen, Rest wird ergänzt
-function screenEnd(fromSummary) {
-  const base = draft.start;
-  let full = draft.end, ghost = 0;
+// KM-Stand Ende: alles bis auf die letzten zwei Ziffern steht schon da (Fahrten < 100 km).
+// Für längere Fahrten einfach mit ← weiter zurück löschen.
+function screenEnd(fromSummary, finish) {
+  const start = draft.start;
+  const ref = draft.end || start;                  // liefert die grauen Platzhalter-Ziffern
+  const prefix = start.length > 2 ? start.slice(0, -2) : '';
+  let v = draft.end ? draft.end.slice(0, -2) : prefix;
+
+  const calc = () => {
+    if (!start) return v ? Number(v) : null;
+    if (v.length < start.length) return null;
+    let n = Number(v);
+    // Nur die letzten zwei getippt, aber kleiner als Beginn → über einen Hunderter gefahren
+    if (n <= Number(start) && v.length === start.length && v.startsWith(prefix)) n += 100;
+    return n;
+  };
+
   return {
-    label: draft.id ? 'Fahrt bearbeiten' : 'Neue Fahrt',
+    label: finish ? draft.purpose : LABELS[draft.mode],
     title: 'KM-Stand Ende',
     mount(el) {
       el.insertAdjacentHTML('beforeend', `<div class="display"><div class="val num" id="d-val"></div><div class="hint" id="d-hint"></div></div>`);
       const paint = () => {
-        const v = $('#d-val'), h = $('#d-hint');
-        const ghostFull = !full && base ? base : '';
-        v.className = 'val num' + (full || ghostFull ? '' : ' empty-val');
-        v.innerHTML = full ? odoHTML(full, ghost) : ghostFull ? odoHTML(ghostFull, ghostFull.length) : '0';
-        const km = full && base ? Number(full) - Number(base) : 0;
-        if (!full) { h.className = 'hint'; h.textContent = base ? 'Die letzten Ziffern reichen' : 'Tippe den Kilometerstand ein'; }
-        else if (km > 0) { h.className = 'hint ok'; h.textContent = `= ${fmtKm(km)} km gefahren`; }
-        else { h.className = 'hint warn'; h.textContent = 'Muss größer als der Beginn sein'; }
+        const d = $('#d-val'), h = $('#d-hint');
+        const full = calc();
+        d.className = 'val num';
+        h.className = 'hint';
+        if (full === null) {
+          const tail = ref.slice(v.length);
+          d.innerHTML = v || tail ? odoHTML(v + tail, 0, v.length) : '<span class="ghost">0</span>';
+          const missing = start.length - v.length;
+          h.textContent = !start ? 'Kilometerstand eintippen'
+            : missing === 2 ? 'Letzte zwei Ziffern eintippen'
+            : missing === 1 ? 'Noch eine Ziffer'
+            : `Noch ${missing} Ziffern`;
+        } else {
+          d.innerHTML = odoHTML(String(full), 0);
+          const km = start ? full - Number(start) : 0;
+          if (!start) h.textContent = '';
+          else if (km > 0) { h.className = 'hint ok'; h.textContent = `= ${fmtKm(km)} km gefahren`; }
+          else { h.className = 'hint warn'; h.textContent = 'Muss größer als der Beginn sein'; }
+        }
       };
-      mountKeypad(el, {
-        value: full, fresh: !!full, max: 7,
-        onChange(v) { ({ full, ghost } = completeOdo(v, base)); paint(); },
-      });
+      mountKeypad(el, { value: v, fresh: false, max: 7, onChange(x) { v = x; paint(); } });
       paint();
     },
     next: {
-      enabled: () => !!full && (!base || Number(full) > Number(base)),
-      run() {
-        draft.end = full;
+      label: finish ? 'Speichern' : 'Weiter',
+      icon: finish ? 'check' : 'next',
+      enabled: () => { const f = calc(); return f !== null && f > 0 && (!start || f > Number(start)); },
+      async run() {
+        draft.end = String(calc());
         draft.km = draftKm();
+        if (finish) return finishOpen();
         if (fromSummary) return pop();
         push(screenPurpose(false));
       },
@@ -856,51 +938,100 @@ function screenEnd(fromSummary) {
   };
 }
 
-// Schritt 3: Zweck – häufige Ziele mit einem Tipp
+async function finishOpen() {
+  const btn = $('#btn-next'); btn.disabled = true;
+  let trip;
+  try { trip = await api('POST', '/open/finish', { km_end: draft.end }); }
+  catch { btn.disabled = false; return; }
+  closeSheet();
+  await load();
+  toast(`${fmtKm(trip.km)} km · ${trip.purpose}`);
+}
+
+// Ziel / Zweck – häufige Ziele mit einem Tipp
 function screenPurpose(fromSummary) {
   let val = draft.purpose;
-  const done = () => {
+  const starting = draft.mode === 'open' && !fromSummary;
+  const done = async () => {
     draft.purpose = val.trim();
-    if (fromSummary) return pop();
+    if (fromSummary) { if (await afterEdit()) pop(); return; }
+    if (starting) {
+      try { await saveOpen(); } catch { return; }
+      closeSheet();
+      await load();
+      toast(`Gute Fahrt · ${draft.purpose}`);
+      return;
+    }
     push(screenSummary());
   };
   return {
-    label: `${fmtKm(draftKm())} km`,
-    title: 'Wofür war die Fahrt?',
+    label: draft.mode === 'new' || draft.mode === 'edit' ? `${fmtKm(draftKm())} km` : LABELS[draft.mode],
+    title: draft.mode === 'open' || draft.mode === 'open-edit' ? 'Wohin geht’s?' : 'Wofür war die Fahrt?',
     mount(el) {
       el.insertAdjacentHTML('beforeend', `
-        <input class="text-in" id="p-in" type="text" placeholder="Zweck" autocomplete="off" autocapitalize="sentences" enterkeyhint="next" value="${esc(val)}">
+        <input class="text-in" id="p-in" type="text" placeholder="Ziel oder Zweck" autocomplete="off" autocapitalize="sentences" enterkeyhint="${starting ? 'go' : 'next'}" value="${esc(val)}">
         <div class="suggest" id="p-sug"></div>`);
       const inp = $('#p-in');
+      let touched = false;   // vorhandenen Wert nicht als Filter nehmen, erst beim Tippen filtern
       const paint = () => {
-        const sug = purposeSuggestions(val);
-        $('#p-sug').innerHTML = sug.map(p => `
+        $('#p-sug').innerHTML = purposeSuggestions(touched ? val : '').map(p => `
           <button class="row" data-pick="${esc(p)}">
             <span class="ic">${esc(p[0].toUpperCase())}</span>
             <span class="main"><div class="t">${esc(p)}</div></span>
-            ${icon('next').replace('<svg', '<svg class="chev"')}
+            ${chev()}
           </button>`).join('');
       };
-      inp.addEventListener('input', () => { val = inp.value; paint(); updateFoot(); });
+      inp.addEventListener('input', () => { val = inp.value; touched = true; paint(); updateFoot(); });
       inp.addEventListener('keydown', e => { if (e.key === 'Enter' && val.trim()) { e.preventDefault(); done(); } });
       $('#p-sug').addEventListener('click', e => {
         const b = e.target.closest('[data-pick]');
         if (b) { val = b.dataset.pick; done(); }
       });
       paint();
-      // Bei neuer Fahrt erst Vorschläge zeigen; Tastatur nur wenn schon Text da ist oder keine Vorschläge
+      // Tastatur nur sofort öffnen, wenn es keine Vorschläge gibt oder ein Wert geändert wird
       if (fromSummary || !purposeSuggestions('').length) setTimeout(() => inp.focus(), 350);
     },
-    next: { enabled: () => !!val.trim(), run: done },
+    next: { label: starting ? 'Losfahren' : 'Weiter', enabled: () => !!val.trim(), run: done },
   };
 }
 
-// Schritt 4: Übersicht – jede Zeile antippbar zum Ändern
+// Laufende Fahrt: Details, ändern, verwerfen oder beenden
+function screenOpen() {
+  let confirmDel = false;
+  return {
+    label: 'Unterwegs',
+    title: () => draft.purpose,
+    mount(el) {
+      const since = new Date(String(state.open.started_at).replace(' ', 'T') + 'Z');
+      const time = isNaN(since) ? '' : since.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
+      el.insertAdjacentHTML('beforeend', `
+        <div class="summary">
+          <div class="sum-row"><span class="k">Gestartet</span><span class="v">${relDate(draft.date)}${time ? ', ' + time : ''}</span></div>
+          <button class="sum-row" data-go="purpose"><span class="k">Ziel ${icon('next')}</span><span class="v">${esc(draft.purpose)}</span></button>
+          <button class="sum-row" data-go="start"><span class="k">KM-Stand Beginn ${icon('next')}</span><span class="v num">${fmtOdo(draft.start)}</span></button>
+        </div>
+        <p class="fine">Am Ziel angekommen? Dann reichen meist die letzten zwei Ziffern vom Kilometerstand.</p>
+        <button class="del-btn" id="del"><span class="ic">${icon('trash')}</span><span id="del-t">Fahrt verwerfen</span></button>`);
+      el.querySelectorAll('[data-go]').forEach(b => b.addEventListener('click', () =>
+        push(b.dataset.go === 'purpose' ? screenPurpose(true) : screenStart(true))));
+      $('#del').addEventListener('click', async () => {
+        if (!confirmDel) { confirmDel = true; $('#del-t').textContent = 'Wirklich verwerfen? Nochmal tippen'; return; }
+        await api('DELETE', '/open');
+        closeSheet();
+        await load();
+        toast('Fahrt verworfen');
+      });
+    },
+    next: { label: 'Fahrt beenden', icon: 'check', run: () => push(screenEnd(false, true)) },
+  };
+}
+
+// Übersicht beim Nachtragen / Bearbeiten – jede Zeile antippbar
 function screenSummary() {
   let confirmDel = false;
   return {
-    label: draft.id ? 'Fahrt bearbeiten' : 'Neue Fahrt',
-    title: () => `${fmtKm(draftKm())} km für ${draft.purpose || '…'}`,
+    label: LABELS[draft.mode],
+    title: () => `${fmtKm(draftKm())} km · ${draft.purpose || '…'}`,
     mount(el) {
       const km = draftKm();
       const ym = draft.date.slice(0, 7);

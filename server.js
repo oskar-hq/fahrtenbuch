@@ -25,6 +25,15 @@ db.exec(`
     created_at TEXT DEFAULT (datetime('now'))
   );
 
+  -- Laufende Fahrt: beim Losfahren angelegt, beim Ankommen in trips übernommen
+  CREATE TABLE IF NOT EXISTS open_trip (
+    id         INTEGER PRIMARY KEY CHECK (id = 1),
+    date       TEXT NOT NULL,
+    purpose    TEXT NOT NULL,
+    km_start   TEXT NOT NULL,
+    started_at TEXT DEFAULT (datetime('now'))
+  );
+
   CREATE TABLE IF NOT EXISTS settings (
     key   TEXT PRIMARY KEY,
     value TEXT
@@ -109,6 +118,52 @@ app.delete('/api/trips/:id', (req, res) => {
   const result = db.prepare('DELETE FROM trips WHERE id = ?').run(req.params.id);
   if (result.changes === 0) return res.status(404).json({ error: 'Nicht gefunden' });
   res.json({ ok: true });
+});
+
+// ── API: Laufende Fahrt ──────────────────────────────────────────────────────
+
+app.get('/api/open', (req, res) => {
+  res.json(db.prepare('SELECT * FROM open_trip WHERE id = 1').get() || null);
+});
+
+app.put('/api/open', (req, res) => {
+  const date = String(req.body.date || '').trim();
+  const purpose = String(req.body.purpose || '').trim();
+  const km_start = cleanOdo(req.body.km_start);
+  if (!ISO_DATE.test(date)) return res.status(400).json({ error: 'Datum fehlt oder ist ungültig' });
+  if (!purpose) return res.status(400).json({ error: 'Zweck fehlt' });
+  if (!km_start) return res.status(400).json({ error: 'KM-Stand Beginn fehlt' });
+  const existing = db.prepare('SELECT started_at FROM open_trip WHERE id = 1').get();
+  db.prepare(
+    `INSERT OR REPLACE INTO open_trip (id, date, purpose, km_start, started_at)
+     VALUES (1, ?, ?, ?, COALESCE(?, datetime('now')))`
+  ).run(date, purpose, km_start, existing ? existing.started_at : null);
+  res.json(db.prepare('SELECT * FROM open_trip WHERE id = 1').get());
+});
+
+app.delete('/api/open', (req, res) => {
+  db.prepare('DELETE FROM open_trip WHERE id = 1').run();
+  res.json({ ok: true });
+});
+
+// Fahrt beenden: laufende Fahrt + Endstand → normaler Eintrag
+app.post('/api/open/finish', (req, res) => {
+  const open = db.prepare('SELECT * FROM open_trip WHERE id = 1').get();
+  if (!open) return res.status(404).json({ error: 'Keine laufende Fahrt' });
+  const km_end = cleanOdo(req.body.km_end);
+  const { trip, error } = validateTrip({ date: open.date, purpose: open.purpose, km_start: open.km_start, km_end });
+  if (error) return res.status(400).json({ error });
+  if (!km_end || Number(km_end) <= Number(open.km_start)) {
+    return res.status(400).json({ error: 'Endstand muss größer als der Beginn sein' });
+  }
+  const created = db.transaction(() => {
+    const r = db.prepare(
+      'INSERT INTO trips (date, purpose, km_start, km_end, km) VALUES (@date, @purpose, @km_start, @km_end, @km)'
+    ).run(trip);
+    db.prepare('DELETE FROM open_trip WHERE id = 1').run();
+    return db.prepare('SELECT * FROM trips WHERE id = ?').get(r.lastInsertRowid);
+  })();
+  res.status(201).json(created);
 });
 
 // ── API: CSV-Import ──────────────────────────────────────────────────────────

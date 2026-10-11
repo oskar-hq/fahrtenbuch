@@ -3,8 +3,10 @@
 Minimalistisches Fahrtenbuch als iPhone-Web-App (Safari → „Zum Home-Bildschirm“).
 Node.js + Express + SQLite, läuft im Proxmox-LXC hinter einem Cloudflare Tunnel.
 
-- **Neue Fahrt** in vier Schritten, immer nur eine Sache auf dem Bildschirm:
-  KM-Stand Beginn (vorbelegt) → KM-Stand Ende (letzte Ziffern reichen) → Zweck (häufige Ziele mit einem Tipp) → Übersicht
+- **Fahrt starten** im Auto: KM-Stand Beginn ist vorbelegt, Ziel mit einem Tipp – fertig
+- **Fahrt beenden** am Ziel: alles bis auf die letzten zwei Ziffern steht schon da (Fahrten unter 100 km),
+  für längere Fahrten einfach mit ← weiter zurück löschen
+- **Nachtragen** und **Bearbeiten** für alles andere, immer nur eine Sache auf dem Bildschirm
 - Tagesbudget und Verlauf gegen die Freikilometer
 - Monatsabrechnung mit Mehrkilometern und Kosten, Export als PDF oder CSV
 - CSV-Import (auch die Dateien der alten Version), Duplikate werden übersprungen
