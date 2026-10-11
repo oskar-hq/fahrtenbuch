@@ -1,0 +1,1185 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<title>Fahrtenbuch</title>
+<meta name="theme-color" content="#ffffff">
+<meta name="color-scheme" content="light">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Fahrtenbuch">
+<meta name="format-detection" content="telephone=no">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --ink: #000;
+    --bg: #fff;
+    --gray: #a3a9b0;
+    --gray-2: #c4c9cf;
+    --gray-3: #d9dde1;
+    --soft: #f4f5f7;
+    --line: #eef0f2;
+    --red: #e0312f;
+    --safe-top: env(safe-area-inset-top, 0px);
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+    --pad: 24px;
+    --ease: cubic-bezier(.32,.72,0,1);
+    --font: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Inter", "Helvetica Neue", system-ui, sans-serif;
+  }
+
+  html { background: var(--bg); -webkit-text-size-adjust: 100%; }
+  body {
+    font-family: var(--font); background: var(--bg); color: var(--ink);
+    -webkit-font-smoothing: antialiased; min-height: 100vh; min-height: 100dvh;
+    -webkit-tap-highlight-color: transparent; overscroll-behavior-y: none;
+  }
+  body.locked { overflow: hidden; }
+  button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; touch-action: manipulation; -webkit-user-select: none; user-select: none; }
+  input { font: inherit; color: inherit; }
+  .num { font-variant-numeric: tabular-nums; }
+
+  .app { max-width: 560px; margin: 0 auto; padding: calc(var(--safe-top) + 28px) var(--pad) calc(var(--safe-bottom) + 140px); }
+
+  /* ── Kopf ───────────────────────────────────────────── */
+  .top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 44px; }
+  .tabs { display: flex; gap: 18px; }
+  .tab { font-size: 34px; font-weight: 700; letter-spacing: -0.025em; color: var(--gray-2); transition: color .2s; padding: 0; }
+  .tab.active { color: var(--ink); }
+  .avatar {
+    width: 48px; height: 48px; border-radius: 50%; background: var(--gray-2); color: #fff;
+    font-weight: 700; font-size: 19px; display: grid; place-items: center; transition: background .2s;
+  }
+  .avatar.active { background: var(--ink); }
+
+  .view { display: none; }
+  .view.active { display: block; animation: fade .25s ease; }
+  @keyframes fade { from { opacity: 0; transform: translateY(6px); } }
+
+  /* ── Kennzahl ───────────────────────────────────────── */
+  .eyebrow { font-size: 17px; font-weight: 600; color: var(--gray); margin-bottom: 6px; }
+  .hero { font-size: 44px; font-weight: 700; letter-spacing: -0.03em; line-height: 1.05; }
+  .hero small { font-size: 26px; letter-spacing: -0.02em; }
+  .delta { margin-top: 10px; font-size: 15px; font-weight: 600; display: flex; align-items: center; gap: 6px; }
+  .delta svg { width: 14px; height: 14px; }
+  .delta.muted { color: var(--gray); }
+
+  /* ── Diagramm ───────────────────────────────────────── */
+  .chart { margin: 28px -4px 8px; }
+  .chart svg { display: block; width: 100%; height: auto; overflow: visible; }
+  .chart text { font-family: var(--font); font-size: 10px; fill: var(--gray); font-weight: 600; }
+  .chart .lbl-strong { fill: var(--ink); }
+
+  /* ── Karten ─────────────────────────────────────────── */
+  .cards {
+    display: flex; gap: 12px; overflow-x: auto; scroll-snap-type: x mandatory;
+    margin: 28px calc(-1 * var(--pad)) 0; padding: 12px var(--pad) 20px; scrollbar-width: none;
+  }
+  .cards::-webkit-scrollbar { display: none; }
+  .card {
+    flex: 0 0 auto; min-width: 140px; height: 112px; border-radius: 22px; padding: 18px;
+    background: #fff; box-shadow: 0 2px 18px rgba(0,0,0,.06), 0 0 0 1px rgba(0,0,0,.025);
+    display: flex; flex-direction: column; justify-content: space-between; scroll-snap-align: start; text-align: left;
+  }
+  .card .k { font-size: 15px; font-weight: 600; color: var(--gray); }
+  .card .v { font-size: 19px; font-weight: 700; letter-spacing: -0.01em; white-space: nowrap; }
+
+  /* ── Listen ─────────────────────────────────────────── */
+  .section { margin-top: 32px; }
+  .section-head { display: flex; align-items: center; justify-content: space-between; font-size: 20px; font-weight: 700; letter-spacing: -0.01em; margin-bottom: 6px; }
+  .section-head .aside { font-size: 15px; color: var(--gray); font-weight: 600; }
+  .month-label { font-size: 15px; font-weight: 600; color: var(--gray); margin: 26px 0 2px; display: flex; justify-content: space-between; }
+
+  .row {
+    display: flex; align-items: center; gap: 16px; width: 100%; padding: 14px 0; text-align: left;
+    transition: opacity .15s;
+  }
+  .row:active { opacity: .5; }
+  .ic {
+    flex: 0 0 auto; width: 44px; height: 44px; border-radius: 50%; background: var(--soft);
+    display: grid; place-items: center; font-weight: 700; font-size: 17px;
+  }
+  .ic svg { width: 22px; height: 22px; }
+  .ic.dark { background: var(--ink); color: #fff; }
+  .row .main { flex: 1; min-width: 0; }
+  .row .t { font-size: 17px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .row .s { font-size: 15px; font-weight: 500; color: var(--gray); margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .row .r { font-size: 17px; font-weight: 700; white-space: nowrap; }
+  .row .chev { color: var(--gray-2); width: 20px; height: 20px; flex: 0 0 auto; }
+  .row.danger .t { color: var(--red); }
+  .row.danger .ic { background: var(--red); color: #fff; }
+
+  .empty { padding: 40px 0; color: var(--gray); font-size: 15px; font-weight: 500; line-height: 1.5; }
+  .empty b { display: block; color: var(--ink); font-size: 17px; }
+
+  /* ── Monats-Chips ───────────────────────────────────── */
+  .chips { display: flex; gap: 6px; overflow-x: auto; margin: 0 calc(-1 * var(--pad)) 28px; padding: 0 var(--pad); scrollbar-width: none; }
+  .chips::-webkit-scrollbar { display: none; }
+  .chip { flex: 0 0 auto; padding: 8px 14px; border-radius: 10px; font-size: 14px; font-weight: 700; color: var(--gray); }
+  .chip.active { background: var(--soft); color: var(--ink); }
+
+  .bar { height: 4px; border-radius: 4px; background: var(--line); margin-top: 22px; overflow: hidden; }
+  .bar i { display: block; height: 100%; background: var(--ink); border-radius: 4px; transition: width .5s var(--ease); }
+
+  .foot-note { margin-top: 36px; font-size: 14px; color: var(--gray); font-weight: 500; line-height: 1.6; }
+  .foot-note b { color: var(--ink); }
+
+  /* ── Untere Leiste ──────────────────────────────────── */
+  .dock {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 20;
+    padding: 28px var(--pad) calc(var(--safe-bottom) + 18px);
+    background: linear-gradient(to bottom, rgba(255,255,255,0), #fff 34%);
+    pointer-events: none;
+  }
+  .dock-inner { max-width: 512px; margin: 0 auto; display: flex; gap: 12px; }
+  .dock .pill { padding: 0 20px; }
+  .dock .pill:first-child { flex: .8; }
+  .pill {
+    pointer-events: auto; flex: 1; height: 64px; border-radius: 22px; background: var(--ink); color: #fff;
+    display: flex; align-items: center; justify-content: space-between; padding: 0 24px;
+    font-size: 17px; font-weight: 700; white-space: nowrap; gap: 10px; box-shadow: 0 10px 30px rgba(0,0,0,.18);
+    transition: transform .15s var(--ease), opacity .2s;
+  }
+  .pill:active { transform: scale(.97); }
+  .pill svg { width: 22px; height: 22px; }
+  .pill:disabled { opacity: .25; box-shadow: none; }
+
+  /* ── Sheet ──────────────────────────────────────────── */
+  .scrim { position: fixed; inset: 0; background: rgba(0,0,0,.25); opacity: 0; pointer-events: none; transition: opacity .35s; z-index: 40; }
+  .scrim.open { opacity: 1; pointer-events: auto; }
+  .sheet {
+    position: fixed; left: 0; right: 0; top: 0; height: 100vh; z-index: 50;
+    display: flex; justify-content: center; pointer-events: none;
+  }
+  .sheet-card {
+    pointer-events: auto; width: 100%; max-width: 560px; margin-top: calc(var(--safe-top) + 10px);
+    background: #fff; border-radius: 22px 22px 0 0; display: flex; flex-direction: column;
+    transform: translateY(105%); transition: transform .42s var(--ease); box-shadow: 0 -10px 40px rgba(0,0,0,.08);
+    overflow: hidden;
+  }
+  .sheet:not(.open) .sheet-card { visibility: hidden; transition: transform .42s var(--ease), visibility 0s .42s; }
+  .sheet.open .sheet-card { transform: none; }
+  .sheet.dragging .sheet-card { transition: none; }
+  .grab { flex: 0 0 auto; padding: 12px 0 8px; display: flex; justify-content: center; touch-action: none; cursor: grab; }
+  .grab i { width: 38px; height: 5px; border-radius: 5px; background: var(--gray-3); }
+  .screen { flex: 1; min-height: 0; display: flex; flex-direction: column; padding: 18px var(--pad) 0; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+  .screen.in-fwd { animation: inFwd .32s var(--ease); }
+  .screen.in-back { animation: inBack .32s var(--ease); }
+  @keyframes inFwd { from { opacity: 0; transform: translateX(28px); } }
+  @keyframes inBack { from { opacity: 0; transform: translateX(-28px); } }
+  .s-label { font-size: 14px; font-weight: 600; color: var(--gray); }
+  .s-title { font-size: 30px; font-weight: 700; letter-spacing: -0.025em; line-height: 1.15; margin-top: 14px; }
+
+  .display { flex: 1; min-height: 120px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; }
+  .display .val { font-size: 60px; font-weight: 700; letter-spacing: -0.03em; line-height: 1; white-space: nowrap; }
+  .display .val .ghost { color: var(--gray-3); }
+  .display .val.empty-val { color: var(--gray-3); }
+  .display .hint { font-size: 15px; font-weight: 600; color: var(--gray); text-align: center; min-height: 20px; }
+  .display .hint.ok { color: var(--ink); }
+  .display .hint.warn { color: var(--red); }
+
+  .keypad { display: grid; grid-template-columns: repeat(3, 1fr); padding: 4px 0 8px; }
+  .key { height: 66px; font-size: 30px; font-weight: 700; display: grid; place-items: center; border-radius: 18px; transition: background .12s; }
+  .key:active { background: var(--soft); }
+  .key svg { width: 28px; height: 28px; }
+
+  .sheet-foot { flex: 0 0 auto; display: flex; gap: 12px; align-items: center; padding: 12px var(--pad) calc(var(--safe-bottom) + 18px); }
+  .sq {
+    width: 64px; height: 64px; border-radius: 20px; background: #fff; flex: 0 0 auto;
+    box-shadow: 0 4px 20px rgba(0,0,0,.07), 0 0 0 1px rgba(0,0,0,.03); display: grid; place-items: center;
+  }
+  .sq svg { width: 20px; height: 20px; }
+  .sq:active { background: var(--soft); }
+  .sheet-foot .pill { flex: 0 1 230px; margin-left: auto; box-shadow: 0 10px 30px rgba(0,0,0,.15); }
+
+  .text-in {
+    width: 100%; border: 0; outline: none; background: none; font-size: 30px; font-weight: 700; letter-spacing: -0.02em;
+    padding: 26px 0 14px; border-bottom: 2px solid var(--ink); border-radius: 0; caret-color: var(--ink);
+  }
+  .text-in::placeholder { color: var(--gray-3); }
+  .suggest { margin-top: 12px; padding-bottom: 12px; }
+
+  .summary { margin-top: 30px; }
+  .sum-row {
+    position: relative; display: flex; align-items: center; justify-content: space-between; gap: 16px;
+    width: 100%; padding: 15px 0; font-size: 17px; text-align: left;
+  }
+  .sum-row .k { color: var(--gray); font-weight: 600; display: flex; align-items: center; gap: 6px; }
+  .sum-row .k svg { width: 16px; height: 16px; color: var(--gray-2); }
+  .sum-row .v { font-weight: 700; text-align: right; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .sum-row .v.warn { color: var(--red); }
+  button.sum-row:active { opacity: .5; }
+  .sum-row input[type=date] { position: absolute; inset: 0; opacity: 0; width: 100%; height: 100%; -webkit-appearance: none; appearance: none; }
+  .fine { margin-top: 26px; font-size: 14px; color: var(--gray); font-weight: 500; line-height: 1.55; }
+  .fine b { color: var(--ink); }
+  .del-btn { margin: 26px 0 10px; font-size: 17px; font-weight: 700; color: var(--red); display: flex; align-items: center; gap: 14px; }
+  .del-btn .ic { background: var(--red); color: #fff; width: 36px; height: 36px; }
+  .del-btn .ic svg { width: 18px; height: 18px; }
+
+  /* ── Toast ──────────────────────────────────────────── */
+  .toast {
+    position: fixed; top: calc(var(--safe-top) + 10px); left: 50%; z-index: 100;
+    transform: translate(-50%, -140%); transition: transform .45s var(--ease), visibility 0s .45s; visibility: hidden;
+    background: var(--ink); color: #fff; border-radius: 99px; padding: 8px 22px 8px 8px;
+    display: flex; align-items: center; gap: 12px; font-size: 15px; font-weight: 600; white-space: nowrap;
+    box-shadow: 0 10px 30px rgba(0,0,0,.2); max-width: calc(100vw - 32px);
+  }
+  .toast.show { transform: translate(-50%, 0); visibility: visible; transition: transform .45s var(--ease); }
+  .toast .ti { width: 30px; height: 30px; border-radius: 50%; background: #fff; color: var(--ink); display: grid; place-items: center; flex: 0 0 auto; }
+  .toast .ti svg { width: 16px; height: 16px; }
+  .toast.error .ti { background: var(--red); color: #fff; }
+  .toast span { overflow: hidden; text-overflow: ellipsis; }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
+  }
+  @media (min-width: 600px) {
+    .sheet-card { margin-top: 40px; margin-bottom: 40px; border-radius: 22px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="app">
+  <header class="top">
+    <nav class="tabs">
+      <button class="tab active" data-view="trips">Fahrten</button>
+      <button class="tab" data-view="month">Monat</button>
+    </nav>
+    <button class="avatar" data-view="profile" aria-label="Einstellungen">J</button>
+  </header>
+
+  <!-- FAHRTEN -->
+  <section class="view active" id="view-trips">
+    <div class="eyebrow" id="h-eyebrow">&nbsp;</div>
+    <div class="hero num" id="h-km">—</div>
+    <div class="delta" id="h-delta">&nbsp;</div>
+    <div class="chart" id="h-chart"></div>
+    <div class="cards" id="h-cards"></div>
+    <div class="section">
+      <div class="section-head">Fahrten</div>
+      <div id="h-list"></div>
+    </div>
+  </section>
+
+  <!-- MONAT -->
+  <section class="view" id="view-month">
+    <div class="chips" id="m-chips"></div>
+    <div class="eyebrow" id="m-eyebrow">&nbsp;</div>
+    <div class="hero num" id="m-km">—</div>
+    <div class="delta muted" id="m-sub">&nbsp;</div>
+    <div class="chart" id="m-chart"></div>
+    <div class="cards" id="m-cards"></div>
+    <div class="section">
+      <div class="section-head">Fahrten <span class="aside" id="m-count"></span></div>
+      <div id="m-list"></div>
+    </div>
+  </section>
+
+  <!-- PROFIL / EINSTELLUNGEN -->
+  <section class="view" id="view-profile">
+    <div class="eyebrow">Fahrtenbuch</div>
+    <div class="hero">Jacobsen</div>
+    <div class="cards" id="p-cards"></div>
+    <div class="section">
+      <div class="section-head">Einstellungen</div>
+      <button class="row" data-action="set-free">
+        <span class="ic dark" data-icon="road"></span>
+        <span class="main"><div class="t">Freikilometer</div><div class="s">Kostenlose Kilometer pro Monat</div></span>
+      </button>
+      <button class="row" data-action="set-price">
+        <span class="ic dark" data-icon="euro"></span>
+        <span class="main"><div class="t">Preis pro Mehrkilometer</div><div class="s">Wird ab den Freikilometern berechnet</div></span>
+      </button>
+      <button class="row" data-action="import">
+        <span class="ic dark" data-icon="upload"></span>
+        <span class="main"><div class="t">CSV importieren</div><div class="s">Exportierte Monatsdateien einspielen</div></span>
+      </button>
+      <button class="row" data-action="backup">
+        <span class="ic dark" data-icon="download"></span>
+        <span class="main"><div class="t">Alle Fahrten sichern</div><div class="s">Komplette CSV, wieder importierbar</div></span>
+      </button>
+    </div>
+    <p class="foot-note">Version 2.0 · Daten liegen in <b>SQLite</b> auf deinem Server. Doppelte Fahrten werden beim Import automatisch übersprungen.</p>
+    <input type="file" id="file-in" accept=".csv,text/csv" multiple hidden>
+  </section>
+</div>
+
+<div class="dock">
+  <div class="dock-inner">
+    <button class="pill" data-action="export"><span>Export</span><span data-icon="share"></span></button>
+    <button class="pill" data-action="new"><span>Neue Fahrt</span><span data-icon="plus"></span></button>
+  </div>
+</div>
+
+<div class="scrim" id="scrim"></div>
+<div class="sheet" id="sheet" aria-modal="true" role="dialog">
+  <div class="sheet-card" id="sheet-card">
+    <div class="grab" id="grab"><i></i></div>
+    <div class="screen" id="screen"></div>
+    <div class="sheet-foot" id="sheet-foot">
+      <button class="sq" id="btn-back" aria-label="Zurück"></button>
+      <button class="pill" id="btn-next"></button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"><span class="ti"></span><span></span></div>
+
+<script>
+// ── Icons ────────────────────────────────────────────────────────────────────
+const ICONS = {
+  plus: '<path d="M12 5v14M5 12h14"/>',
+  check: '<path d="M5 12.5l4.5 4.5L19 7.5"/>',
+  next: '<path d="M9 6l6 6-6 6"/>',
+  back: '<path d="M15 6l-6 6 6 6"/>',
+  close: '<path d="M6 6l12 12M18 6L6 18"/>',
+  up: '<path d="M12 19V5M6 11l6-6 6 6"/>',
+  down: '<path d="M12 5v14M6 13l6 6 6-6"/>',
+  bksp: '<path d="M20 12H5M11 6l-6 6 6 6"/>',
+  share: '<path d="M12 14V4M8 8l4-4 4 4M6 11H5v9h14v-9h-1"/>',
+  road: '<path d="M9 3L5 21M15 3l4 18M12 5v2M12 11v2M12 17v2"/>',
+  euro: '<path d="M17 6.5A7 7 0 1 0 17 17.5M4 10h10M4 14h10"/>',
+  upload: '<path d="M12 15V4M7 9l5-5 5 5M5 15v4h14v-4"/>',
+  download: '<path d="M12 4v11M7 10l5 5 5-5M5 15v4h14v-4"/>',
+  doc: '<path d="M7 3h7l4 4v14H7zM14 3v4h4M10 12h5M10 16h5"/>',
+  table: '<path d="M4 5h16v14H4zM4 10h16M4 15h16M10 5v14"/>',
+  trash: '<path d="M5 7h14M10 7V4h4v3M7 7l1 13h8l1-13"/>',
+  cal: '<path d="M4 6h16v14H4zM4 10h16M8 3v4M16 3v4"/>',
+  eye: '<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',
+  alert: '<path d="M12 8v5M12 16.5v.5"/><circle cx="12" cy="12" r="9"/>',
+};
+function icon(name) {
+  return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">${ICONS[name] || ''}</svg>`;
+}
+function hydrateIcons(root = document) {
+  root.querySelectorAll('[data-icon]').forEach(el => { el.innerHTML = icon(el.dataset.icon); });
+}
+
+// ── Helfer ───────────────────────────────────────────────────────────────────
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const nf = new Intl.NumberFormat('de-DE');
+const fmtKm = n => nf.format(Math.round(n));
+const fmtEur = n => n.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
+const fmtOdo = s => (s === null || s === undefined || s === '') ? '—' : nf.format(Number(s));
+const pad2 = n => String(n).padStart(2, '0');
+const isoOf = d => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+const todayIso = () => isoOf(new Date());
+const currentYM = () => todayIso().slice(0, 7);
+const parseIso = iso => { const [y, m, d] = iso.split('-').map(Number); return new Date(y, m - 1, d); };
+const fmtDateDE = iso => { const [y, m, d] = iso.split('-'); return `${d}.${m}.${y}`; };
+const shortDate = iso => parseIso(iso).toLocaleDateString('de-DE', { day: 'numeric', month: 'short' });
+const monthName = ym => { const [y, m] = ym.split('-'); return new Date(y, m - 1, 1).toLocaleDateString('de-DE', { month: 'long', year: 'numeric' }); };
+const monthOnly = ym => { const [y, m] = ym.split('-'); return new Date(y, m - 1, 1).toLocaleDateString('de-DE', { month: 'long' }); };
+const monthShort = ym => { const [y, m] = ym.split('-'); const s = new Date(y, m - 1, 1).toLocaleDateString('de-DE', { month: 'short' }).replace('.', ''); return y === currentYM().slice(0, 4) ? s : `${s} ${y.slice(2)}`; };
+const daysIn = ym => { const [y, m] = ym.split('-').map(Number); return new Date(y, m, 0).getDate(); };
+function relDate(iso) {
+  const t = todayIso();
+  if (iso === t) return 'Heute';
+  const y = new Date(); y.setDate(y.getDate() - 1);
+  if (iso === isoOf(y)) return 'Gestern';
+  return parseIso(iso).toLocaleDateString('de-DE', { weekday: 'short', day: 'numeric', month: 'short' });
+}
+const tripKm = t => Number(t.km) || 0;
+const sumKm = list => list.reduce((s, t) => s + tripKm(t), 0);
+
+// ── API ──────────────────────────────────────────────────────────────────────
+async function api(method, path, body, raw) {
+  try {
+    const res = await fetch('/api' + path, {
+      method,
+      headers: body ? { 'Content-Type': raw ? 'text/csv' : 'application/json' } : {},
+      body: body ? (raw ? body : JSON.stringify(body)) : undefined,
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || 'Serverfehler');
+    return data;
+  } catch (e) {
+    toast(e.message === 'Failed to fetch' ? 'Keine Verbindung zum Server' : e.message, true);
+    throw e;
+  }
+}
+
+// ── Zustand ──────────────────────────────────────────────────────────────────
+const state = {
+  trips: [],
+  settings: { freeKm: 300, pricePerKm: 0.22 },
+  view: 'trips',
+  month: currentYM(),
+};
+
+async function load() {
+  const [trips, settings] = await Promise.all([api('GET', '/trips'), api('GET', '/settings')]);
+  state.trips = trips;
+  state.settings = { freeKm: 300, pricePerKm: 0.22, ...settings };
+  render();
+}
+
+// Letzter bekannter KM-Stand = Endstand der zeitlich letzten Fahrt
+function lastOdo(excludeId) {
+  for (let i = state.trips.length - 1; i >= 0; i--) {
+    const t = state.trips[i];
+    if (t.id !== excludeId && t.km_end) return String(t.km_end);
+  }
+  return '';
+}
+
+// Häufige Zwecke, gewichtet nach Häufigkeit und Aktualität
+function purposeSuggestions(query) {
+  const score = new Map();
+  const n = state.trips.length;
+  state.trips.forEach((t, i) => {
+    const key = t.purpose.trim();
+    const cur = score.get(key) || 0;
+    score.set(key, cur + 1 + (i / Math.max(1, n)) * 2);
+  });
+  const q = (query || '').trim().toLowerCase();
+  return [...score.entries()]
+    .filter(([p]) => !q || (p.toLowerCase().includes(q) && p.toLowerCase() !== q))
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 6)
+    .map(([p]) => p);
+}
+
+function monthStats(ym) {
+  const trips = state.trips.filter(t => t.date.startsWith(ym));
+  const total = sumKm(trips);
+  const extra = Math.max(0, total - state.settings.freeKm);
+  return { trips, total, extra, cost: extra * state.settings.pricePerKm };
+}
+
+// ── Rendering ────────────────────────────────────────────────────────────────
+function render() {
+  document.querySelectorAll('[data-view]').forEach(b => b.classList.toggle('active', b.dataset.view === state.view));
+  document.querySelectorAll('.view').forEach(v => v.classList.toggle('active', v.id === 'view-' + state.view));
+  if (state.view === 'trips') renderHome();
+  if (state.view === 'month') renderMonth();
+  if (state.view === 'profile') renderProfile();
+}
+
+function renderHome() {
+  const ym = currentYM();
+  const now = new Date();
+  const days = daysIn(ym), day = now.getDate();
+  const { trips, total } = monthStats(ym);
+  const free = state.settings.freeKm;
+  const budget = free / days * day;
+  const diff = budget - total;
+
+  $('#h-eyebrow').textContent = `${monthOnly(ym)} · Tag ${day} von ${days}`;
+  $('#h-km').innerHTML = `${fmtKm(total)} <small>km</small>`;
+  $('#h-delta').innerHTML = diff >= 0
+    ? `${icon('down')} ${fmtKm(diff)} km unter Tagesbudget`
+    : `${icon('up')} ${fmtKm(-diff)} km über Tagesbudget`;
+  $('#h-chart').innerHTML = chartSVG(ym, trips, day);
+
+  const rest = Math.max(0, free - total);
+  const restDays = days - day;
+  $('#h-cards').innerHTML = cards([
+    ['Noch frei', `${fmtKm(rest)} km`],
+    ['Pro Resttag', restDays > 0 ? `${fmtKm(rest / restDays)} km` : '—'],
+    ['KM-Stand', fmtOdo(lastOdo())],
+    ['Fahrten', `${trips.length}`],
+  ]);
+
+  const list = $('#h-list');
+  if (!state.trips.length) {
+    list.innerHTML = `<div class="empty"><b>Noch keine Fahrten</b>Tippe auf „Neue Fahrt“ oder importiere deine CSV-Dateien über das Profil oben rechts.</div>`;
+    return;
+  }
+  const groups = new Map();
+  [...state.trips].reverse().forEach(t => {
+    const k = t.date.slice(0, 7);
+    if (!groups.has(k)) groups.set(k, []);
+    groups.get(k).push(t);
+  });
+  list.innerHTML = [...groups.entries()].map(([k, ts]) =>
+    `<div class="month-label"><span>${monthName(k)}</span><span class="num">${fmtKm(sumKm(ts))} km</span></div>` + ts.map(tripRow).join('')
+  ).join('');
+}
+
+function renderMonth() {
+  const months = [...new Set([currentYM(), ...state.trips.map(t => t.date.slice(0, 7))])].sort().reverse();
+  if (!months.includes(state.month)) state.month = months[0];
+  const ym = state.month;
+  $('#m-chips').innerHTML = months.map(m =>
+    `<button class="chip${m === ym ? ' active' : ''}" data-month="${m}">${monthShort(m)}</button>`).join('');
+
+  const { trips, total, extra, cost } = monthStats(ym);
+  const free = state.settings.freeKm;
+  const isCurrent = ym === currentYM();
+  $('#m-eyebrow').textContent = monthName(ym);
+  $('#m-km').innerHTML = `${fmtKm(total)} <small>km</small>`;
+  $('#m-sub').textContent = `von ${fmtKm(free)} Freikilometern · ${trips.length} ${trips.length === 1 ? 'Fahrt' : 'Fahrten'}`;
+  $('#m-chart').innerHTML = chartSVG(ym, trips, isCurrent ? new Date().getDate() : (ym > currentYM() ? 0 : daysIn(ym)));
+  $('#m-cards').innerHTML = cards([
+    ['Zu zahlen', fmtEur(cost)],
+    ['Mehrkilometer', `${fmtKm(extra)} km`],
+    ['Ø pro Fahrt', trips.length ? `${fmtKm(total / trips.length)} km` : '—'],
+    ['Preis', `${state.settings.pricePerKm.toLocaleString('de-DE', { minimumFractionDigits: 2 })} €/km`],
+  ]);
+  $('#m-count').textContent = trips.length ? `${trips.length}` : '';
+  $('#m-list').innerHTML = trips.length
+    ? [...trips].reverse().map(tripRow).join('')
+    : `<div class="empty"><b>Keine Fahrten</b>In diesem Monat wurde nichts eingetragen.</div>`;
+  const active = $('#m-chips .chip.active');
+  if (active) active.scrollIntoView({ inline: 'nearest', block: 'nearest' });
+}
+
+function renderProfile() {
+  const s = state.settings;
+  $('#p-cards').innerHTML = cards([
+    ['Freikilometer', `${fmtKm(s.freeKm)} km`],
+    ['Preis', `${s.pricePerKm.toLocaleString('de-DE', { minimumFractionDigits: 2 })} €/km`],
+    ['Fahrten', `${state.trips.length}`],
+    ['Gesamt', `${fmtKm(sumKm(state.trips))} km`],
+  ]);
+}
+
+function cards(items) {
+  return items.map(([k, v]) => `<div class="card"><div class="k">${k}</div><div class="v num">${esc(v)}</div></div>`).join('');
+}
+
+function tripRow(t) {
+  const letter = esc((t.purpose.trim()[0] || '?').toUpperCase());
+  const odo = t.km_end ? ` · bis ${fmtOdo(t.km_end)}` : '';
+  return `<button class="row" data-trip="${t.id}">
+    <span class="ic">${letter}</span>
+    <span class="main"><div class="t">${esc(t.purpose)}</div><div class="s num">${shortDate(t.date)}${odo}</div></span>
+    <span class="r num">${fmtKm(tripKm(t))} km</span>
+  </button>`;
+}
+
+// Kumulierte Kilometer im Monat vs. Freikilometer-Budget
+function chartSVG(ym, trips, uptoDay) {
+  const W = 340, H = 170, L = 0, R = 300, T = 14, B = 140;
+  const days = daysIn(ym), free = state.settings.freeKm;
+  const perDay = new Array(days + 1).fill(0);
+  trips.forEach(t => { perDay[Number(t.date.slice(8, 10))] += tripKm(t); });
+  const total = sumKm(trips);
+  const yMax = Math.max(free, total, 1) * 1.08;
+  const x = d => L + (d / days) * (R - L);
+  const y = v => B - (v / yMax) * (B - T);
+
+  const pts = [[x(0), y(0)]];
+  let cum = 0;
+  for (let d = 1; d <= Math.min(uptoDay, days); d++) {
+    if (perDay[d]) pts.push([x(d - 1 + 0.5), y(cum)]);
+    cum += perDay[d];
+    if (perDay[d]) pts.push([x(d - 0.5), y(cum)]);
+  }
+  if (uptoDay > 0) pts.push([x(Math.min(uptoDay, days)), y(cum)]);
+  const path = pts.map((p, i) => (i ? 'L' : 'M') + p[0].toFixed(1) + ' ' + p[1].toFixed(1)).join(' ');
+  const end = pts[pts.length - 1];
+
+  const ticks = [1, 8, 15, 22, days].map(d =>
+    `<text x="${x(d - 0.5).toFixed(1)}" y="${H - 6}" text-anchor="middle">${d}.</text>`).join('');
+  const over = total > free;
+  return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Kilometerverlauf ${monthName(ym)}">
+    <line x1="${L}" y1="${y(free)}" x2="${R}" y2="${y(free)}" stroke="#d9dde1" stroke-width="1" stroke-dasharray="2 3"/>
+    <line x1="${L}" y1="${B}" x2="${R}" y2="${B}" stroke="#eef0f2" stroke-width="1"/>
+    <line x1="${x(0)}" y1="${y(0)}" x2="${x(days)}" y2="${y(free)}" stroke="#c4c9cf" stroke-width="1.2" stroke-dasharray="3 4"/>
+    <text x="${W}" y="${y(free) + 3.5}" text-anchor="end">${fmtKm(free)}</text>
+    <text x="${W}" y="${B + 3.5}" text-anchor="end">0</text>
+    ${uptoDay > 0 ? `
+      <path d="${path}" fill="none" stroke="#000" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+      <circle cx="${end[0]}" cy="${end[1]}" r="9" fill="#e6e8eb"/>
+      <circle cx="${end[0]}" cy="${end[1]}" r="3.5" fill="#000"/>
+      ${!over && Math.abs(y(free) - end[1]) > 14 && B - end[1] > 14 ? `<text x="${W}" y="${end[1] + 3.5}" text-anchor="end" class="lbl-strong">${fmtKm(total)}</text>` : ''}` : ''}
+    ${ticks}
+  </svg>`;
+}
+
+// ── Navigation ───────────────────────────────────────────────────────────────
+document.addEventListener('click', e => {
+  const v = e.target.closest('[data-view]');
+  if (v) { state.view = v.dataset.view; render(); window.scrollTo({ top: 0 }); return; }
+  const m = e.target.closest('[data-month]');
+  if (m) { state.month = m.dataset.month; renderMonth(); return; }
+  const t = e.target.closest('[data-trip]');
+  if (t) { const trip = state.trips.find(x => x.id === Number(t.dataset.trip)); if (trip) startEdit(trip); return; }
+  const a = e.target.closest('[data-action]');
+  if (!a) return;
+  ({
+    'new': startNew,
+    'export': openExport,
+    'set-free': editFreeKm,
+    'set-price': editPrice,
+    'import': () => $('#file-in').click(),
+    'backup': exportBackup,
+  })[a.dataset.action]?.();
+});
+
+// ═════════════════════════════════════════════════════════════════════════════
+// Sheet: eine Sache nach der anderen
+// ═════════════════════════════════════════════════════════════════════════════
+const sheet = { stack: [], keypad: null };
+
+function openSheet(screen) {
+  sheet.stack = [screen];
+  document.body.classList.add('locked');
+  $('#scrim').classList.add('open');
+  $('#sheet').classList.add('open');
+  fitSheet();
+  showScreen(null);
+}
+function closeSheet() {
+  $('#scrim').classList.remove('open');
+  $('#sheet').classList.remove('open');
+  document.body.classList.remove('locked');
+  sheet.stack = []; sheet.keypad = null;
+  document.activeElement?.blur?.();
+}
+function push(screen) { sheet.stack.push(screen); showScreen('fwd'); }
+function pop() {
+  if (sheet.stack.length <= 1) return closeSheet();
+  sheet.stack.pop(); showScreen('back');
+}
+function current() { return sheet.stack[sheet.stack.length - 1]; }
+
+function showScreen(dir) {
+  const scr = current();
+  const el = $('#screen');
+  sheet.keypad = null;
+  el.className = 'screen' + (dir ? ' in-' + dir : '');
+  void el.offsetWidth;
+  el.innerHTML = `${scr.label ? `<div class="s-label">${esc(scr.label)}</div>` : ''}<div class="s-title" id="s-title"></div>`;
+  scr.mount(el);
+  el.scrollTop = 0;
+  updateFoot();
+}
+
+function updateFoot() {
+  const scr = current();
+  if (!scr) return;
+  const title = typeof scr.title === 'function' ? scr.title() : scr.title;
+  const tEl = $('#s-title'); if (tEl) tEl.textContent = title;
+  $('#btn-back').innerHTML = icon(sheet.stack.length > 1 ? 'back' : 'close');
+  const next = $('#btn-next');
+  if (scr.next) {
+    next.style.display = '';
+    next.innerHTML = `<span>${esc(scr.next.label || 'Weiter')}</span>${icon(scr.next.icon || 'next')}`;
+    next.disabled = scr.next.enabled ? !scr.next.enabled() : false;
+  } else next.style.display = 'none';
+}
+
+$('#btn-back').addEventListener('click', pop);
+$('#btn-next').addEventListener('click', () => { const s = current(); if (s?.next && !$('#btn-next').disabled) s.next.run(); });
+$('#scrim').addEventListener('click', closeSheet);
+
+// Sheet passt sich der sichtbaren Fläche an (iOS-Tastatur)
+function fitSheet() {
+  const vv = window.visualViewport;
+  const s = $('#sheet');
+  s.style.height = (vv ? vv.height : window.innerHeight) + 'px';
+  s.style.top = (vv ? vv.offsetTop : 0) + 'px';
+}
+window.visualViewport?.addEventListener('resize', fitSheet);
+window.visualViewport?.addEventListener('scroll', fitSheet);
+window.addEventListener('resize', fitSheet);
+
+// Nach unten ziehen zum Schließen
+(() => {
+  let y0 = null, dy = 0;
+  const card = $('#sheet-card');
+  $('#grab').addEventListener('pointerdown', e => { y0 = e.clientY; dy = 0; $('#sheet').classList.add('dragging'); $('#grab').setPointerCapture(e.pointerId); });
+  $('#grab').addEventListener('pointermove', e => { if (y0 === null) return; dy = Math.max(0, e.clientY - y0); card.style.transform = `translateY(${dy}px)`; });
+  const end = () => {
+    if (y0 === null) return;
+    $('#sheet').classList.remove('dragging'); card.style.transform = '';
+    if (dy > 90 || dy < 4) closeSheet();
+    y0 = null;
+  };
+  $('#grab').addEventListener('pointerup', end);
+  $('#grab').addEventListener('pointercancel', end);
+})();
+
+// ── Ziffernblock ─────────────────────────────────────────────────────────────
+// value: eingetippte Zeichen. fresh: vorbelegter Wert, wird beim ersten Tippen ersetzt.
+function mountKeypad(el, opts) {
+  const kp = { value: opts.value || '', fresh: !!opts.fresh, decimal: !!opts.decimal, max: opts.max || 7, onChange: opts.onChange };
+  const wrap = document.createElement('div');
+  wrap.className = 'keypad';
+  const keys = ['1','2','3','4','5','6','7','8','9', kp.decimal ? ',' : '', '0', 'bksp'];
+  wrap.innerHTML = keys.map(k => k ? `<button class="key" data-k="${k}">${k === 'bksp' ? icon('bksp') : k}</button>` : '<span></span>').join('');
+  wrap.addEventListener('click', e => { const b = e.target.closest('[data-k]'); if (b) press(kp, b.dataset.k); });
+  el.appendChild(wrap);
+  sheet.keypad = kp;
+  return kp;
+}
+function press(kp, k) {
+  let v = kp.fresh ? '' : kp.value;
+  if (k === 'bksp') v = kp.fresh ? '' : v.slice(0, -1);
+  else if (k === ',') { if (!kp.decimal || v.includes(',')) return; v = (v || '0') + ','; }
+  else {
+    if (kp.decimal && v.includes(',') && v.split(',')[1].length >= 2) return;
+    if (!kp.decimal && v.replace(/\D/g, '').length >= kp.max) return;
+    if (v === '0' && !kp.decimal) v = '';
+    v += k;
+  }
+  kp.fresh = false; kp.value = v;
+  navigator.vibrate?.(5);
+  kp.onChange(v);
+  updateFoot();
+}
+document.addEventListener('keydown', e => {
+  if (!sheet.stack.length) return;
+  if (e.key === 'Escape') { pop(); return; }
+  if (e.key === 'Enter' && sheet.keypad) { $('#btn-next').click(); return; }
+  if (!sheet.keypad || e.metaKey || e.ctrlKey) return;
+  if (/^\d$/.test(e.key)) press(sheet.keypad, e.key);
+  else if (e.key === 'Backspace') press(sheet.keypad, 'bksp');
+  else if (e.key === ',' || e.key === '.') press(sheet.keypad, ',');
+});
+
+// Kilometerstand-Vervollständigung: nur die letzten Ziffern tippen.
+// Basis 178453, getippt "481" → 178481. Getippt "21" → 178521 (nächster passender Stand ≥ Basis).
+function completeOdo(typed, base) {
+  if (!typed) return { full: '', ghost: 0 };
+  if (!base || typed.length >= base.length) return { full: typed, ghost: 0 };
+  const n = typed.length;
+  const prefix = base.slice(0, base.length - n);
+  let cand = Number(prefix + typed);
+  if (cand < Number(base)) cand += 10 ** n;
+  const full = String(cand);
+  return { full, ghost: full.length - n };
+}
+function odoHTML(full, ghost) {
+  if (!full) return '';
+  // Tausenderpunkte einfügen und die ergänzten Ziffern grau färben
+  let out = '';
+  for (let i = 0; i < full.length; i++) {
+    const fromRight = full.length - i;
+    out += `<span class="${i < ghost ? 'ghost' : ''}">${full[i]}</span>`;
+    if (fromRight > 1 && (fromRight - 1) % 3 === 0) out += `<span class="${i < ghost ? 'ghost' : ''}">.</span>`;
+  }
+  return out;
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+// Fahrt erfassen / bearbeiten
+// ═════════════════════════════════════════════════════════════════════════════
+let draft = null;
+
+function draftKm(d = draft) {
+  if (d.start && d.end) return Number(d.end) - Number(d.start);
+  return Number(d.km) || 0;
+}
+
+function startNew() {
+  draft = { id: null, date: todayIso(), purpose: '', start: lastOdo(), end: '', km: 0 };
+  openSheet(screenStart(false));
+}
+
+function startEdit(t) {
+  draft = { id: t.id, date: t.date, purpose: t.purpose, start: t.km_start ? String(t.km_start) : '', end: t.km_end ? String(t.km_end) : '', km: t.km };
+  openSheet(screenSummary());
+}
+
+// Schritt 1: KM-Stand Beginn (mit letztem Stand vorbelegt → meist nur „Weiter“)
+function screenStart(fromSummary) {
+  const base = draft.id ? '' : lastOdo();
+  const compBase = base || draft.start;
+  let full = draft.start, ghost = 0;
+  return {
+    label: draft.id ? 'Fahrt bearbeiten' : 'Neue Fahrt',
+    title: 'KM-Stand Beginn',
+    mount(el) {
+      el.insertAdjacentHTML('beforeend', `<div class="display"><div class="val num" id="d-val"></div><div class="hint" id="d-hint"></div></div>`);
+      const paint = () => {
+        const v = $('#d-val'), h = $('#d-hint');
+        v.className = 'val num' + (full ? '' : ' empty-val');
+        v.innerHTML = full ? odoHTML(full, ghost) : '0';
+        h.className = 'hint';
+        if (!base || !full) h.textContent = base ? `Letzter Stand ${fmtOdo(base)}` : 'Tippe den Kilometerstand ein';
+        else if (full === base) h.textContent = 'Wie Ende der letzten Fahrt';
+        else if (Number(full) > Number(base)) { h.textContent = `${fmtKm(full - base)} km seit deiner letzten Fahrt`; }
+        else { h.textContent = `Kleiner als letzter Stand ${fmtOdo(base)}`; h.className = 'hint warn'; }
+      };
+      mountKeypad(el, {
+        value: full, fresh: true, max: 7,
+        onChange(v) { ({ full, ghost } = completeOdo(v, compBase)); paint(); },
+      });
+      paint();
+    },
+    next: {
+      enabled: () => !!full && Number(full) > 0,
+      run() {
+        draft.start = full;
+        if (fromSummary) return pop();
+        push(screenEnd(false));
+      },
+    },
+  };
+}
+
+// Schritt 2: KM-Stand Ende – nur die letzten Ziffern tippen, Rest wird ergänzt
+function screenEnd(fromSummary) {
+  const base = draft.start;
+  let full = draft.end, ghost = 0;
+  return {
+    label: draft.id ? 'Fahrt bearbeiten' : 'Neue Fahrt',
+    title: 'KM-Stand Ende',
+    mount(el) {
+      el.insertAdjacentHTML('beforeend', `<div class="display"><div class="val num" id="d-val"></div><div class="hint" id="d-hint"></div></div>`);
+      const paint = () => {
+        const v = $('#d-val'), h = $('#d-hint');
+        const ghostFull = !full && base ? base : '';
+        v.className = 'val num' + (full || ghostFull ? '' : ' empty-val');
+        v.innerHTML = full ? odoHTML(full, ghost) : ghostFull ? odoHTML(ghostFull, ghostFull.length) : '0';
+        const km = full && base ? Number(full) - Number(base) : 0;
+        if (!full) { h.className = 'hint'; h.textContent = base ? 'Die letzten Ziffern reichen' : 'Tippe den Kilometerstand ein'; }
+        else if (km > 0) { h.className = 'hint ok'; h.textContent = `= ${fmtKm(km)} km gefahren`; }
+        else { h.className = 'hint warn'; h.textContent = 'Muss größer als der Beginn sein'; }
+      };
+      mountKeypad(el, {
+        value: full, fresh: !!full, max: 7,
+        onChange(v) { ({ full, ghost } = completeOdo(v, base)); paint(); },
+      });
+      paint();
+    },
+    next: {
+      enabled: () => !!full && (!base || Number(full) > Number(base)),
+      run() {
+        draft.end = full;
+        draft.km = draftKm();
+        if (fromSummary) return pop();
+        push(screenPurpose(false));
+      },
+    },
+  };
+}
+
+// Schritt 3: Zweck – häufige Ziele mit einem Tipp
+function screenPurpose(fromSummary) {
+  let val = draft.purpose;
+  const done = () => {
+    draft.purpose = val.trim();
+    if (fromSummary) return pop();
+    push(screenSummary());
+  };
+  return {
+    label: `${fmtKm(draftKm())} km`,
+    title: 'Wofür war die Fahrt?',
+    mount(el) {
+      el.insertAdjacentHTML('beforeend', `
+        <input class="text-in" id="p-in" type="text" placeholder="Zweck" autocomplete="off" autocapitalize="sentences" enterkeyhint="next" value="${esc(val)}">
+        <div class="suggest" id="p-sug"></div>`);
+      const inp = $('#p-in');
+      const paint = () => {
+        const sug = purposeSuggestions(val);
+        $('#p-sug').innerHTML = sug.map(p => `
+          <button class="row" data-pick="${esc(p)}">
+            <span class="ic">${esc(p[0].toUpperCase())}</span>
+            <span class="main"><div class="t">${esc(p)}</div></span>
+            ${icon('next').replace('<svg', '<svg class="chev"')}
+          </button>`).join('');
+      };
+      inp.addEventListener('input', () => { val = inp.value; paint(); updateFoot(); });
+      inp.addEventListener('keydown', e => { if (e.key === 'Enter' && val.trim()) { e.preventDefault(); done(); } });
+      $('#p-sug').addEventListener('click', e => {
+        const b = e.target.closest('[data-pick]');
+        if (b) { val = b.dataset.pick; done(); }
+      });
+      paint();
+      // Bei neuer Fahrt erst Vorschläge zeigen; Tastatur nur wenn schon Text da ist oder keine Vorschläge
+      if (fromSummary || !purposeSuggestions('').length) setTimeout(() => inp.focus(), 350);
+    },
+    next: { enabled: () => !!val.trim(), run: done },
+  };
+}
+
+// Schritt 4: Übersicht – jede Zeile antippbar zum Ändern
+function screenSummary() {
+  let confirmDel = false;
+  return {
+    label: draft.id ? 'Fahrt bearbeiten' : 'Neue Fahrt',
+    title: () => `${fmtKm(draftKm())} km für ${draft.purpose || '…'}`,
+    mount(el) {
+      const km = draftKm();
+      const ym = draft.date.slice(0, 7);
+      const monthKm = sumKm(state.trips.filter(t => t.date.startsWith(ym) && t.id !== draft.id)) + km;
+      const free = state.settings.freeKm;
+      const extra = Math.max(0, monthKm - free);
+      el.insertAdjacentHTML('beforeend', `
+        <div class="summary">
+          <label class="sum-row">
+            <span class="k">Datum ${icon('next')}</span>
+            <span class="v" id="sum-date">${relDate(draft.date)}</span>
+            <input type="date" id="date-in" value="${draft.date}" max="${todayIso()}">
+          </label>
+          <button class="sum-row" data-go="purpose"><span class="k">Zweck ${icon('next')}</span><span class="v">${esc(draft.purpose || '—')}</span></button>
+          <button class="sum-row" data-go="start"><span class="k">KM-Stand Beginn ${icon('next')}</span><span class="v num">${fmtOdo(draft.start)}</span></button>
+          <button class="sum-row" data-go="end"><span class="k">KM-Stand Ende ${icon('next')}</span><span class="v num">${fmtOdo(draft.end)}</span></button>
+          <div class="sum-row"><span class="k">Kilometer</span><span class="v num${km > 0 ? '' : ' warn'}">${km > 0 ? fmtKm(km) + ' km' : 'ungültig'}</span></div>
+          <div class="sum-row"><span class="k">${monthOnly(ym)} gesamt</span><span class="v num">${fmtKm(monthKm)} / ${fmtKm(free)} km</span></div>
+        </div>
+        <p class="fine">${extra > 0
+          ? `Damit liegst du <b>${fmtKm(extra)} km</b> über den Freikilometern – das wären <b>${fmtEur(extra * state.settings.pricePerKm)}</b> für ${monthOnly(ym)}.`
+          : `Noch <b>${fmtKm(free - monthKm)} km</b> frei im ${monthOnly(ym)}.`}</p>
+        ${draft.id ? `<button class="del-btn" id="del"><span class="ic">${icon('trash')}</span><span id="del-t">Fahrt löschen</span></button>` : ''}`);
+      $('#date-in').addEventListener('click', e => { try { e.target.showPicker(); } catch {} });
+      $('#date-in').addEventListener('change', e => {
+        if (!e.target.value) return;
+        draft.date = e.target.value;
+        showScreen(null);
+      });
+      el.querySelectorAll('[data-go]').forEach(b => b.addEventListener('click', () => {
+        const go = b.dataset.go;
+        push(go === 'purpose' ? screenPurpose(true) : go === 'start' ? screenStart(true) : screenEnd(true));
+      }));
+      $('#del')?.addEventListener('click', async () => {
+        if (!confirmDel) { confirmDel = true; $('#del-t').textContent = 'Wirklich löschen? Nochmal tippen'; return; }
+        await api('DELETE', `/trips/${draft.id}`);
+        closeSheet();
+        await load();
+        toast('Fahrt gelöscht');
+      });
+    },
+    next: {
+      label: 'Speichern', icon: 'check',
+      enabled: () => draftKm() > 0 && !!draft.purpose.trim() && !!draft.date,
+      async run() {
+        const btn = $('#btn-next'); btn.disabled = true;
+        const body = { date: draft.date, purpose: draft.purpose.trim(), km_start: draft.start || null, km_end: draft.end || null, km: draftKm() };
+        try {
+          if (draft.id) await api('PUT', `/trips/${draft.id}`, body);
+          else await api('POST', '/trips', body);
+        } catch { btn.disabled = false; return; }
+        const km = body.km, isNew = !draft.id;
+        closeSheet();
+        await load();
+        toast(isNew ? `${fmtKm(km)} km gespeichert` : 'Fahrt aktualisiert');
+      },
+    },
+  };
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+// Einstellungen
+// ═════════════════════════════════════════════════════════════════════════════
+function numberScreen({ label, title, value, decimal, unit, save }) {
+  let v = value;
+  return {
+    label, title,
+    mount(el) {
+      el.insertAdjacentHTML('beforeend', `<div class="display"><div class="val num" id="d-val"></div><div class="hint" id="d-hint">${esc(unit)}</div></div>`);
+      const paint = () => { const d = $('#d-val'); d.className = 'val num' + (v ? '' : ' empty-val'); d.textContent = v || '0'; };
+      mountKeypad(el, { value: v, fresh: true, decimal, max: 5, onChange(x) { v = x; paint(); } });
+      paint();
+    },
+    next: {
+      label: 'Speichern', icon: 'check',
+      enabled: () => v !== '' && !isNaN(parseFloat(v.replace(',', '.'))),
+      async run() {
+        await save(parseFloat(v.replace(',', '.')));
+        closeSheet();
+        render();
+      },
+    },
+  };
+}
+async function saveSettings(patch) {
+  const next = { ...state.settings, ...patch };
+  await api('POST', '/settings', next);
+  state.settings = next;
+  toast('Gespeichert');
+}
+function editFreeKm() {
+  openSheet(numberScreen({
+    label: 'Einstellungen', title: 'Freikilometer pro Monat', unit: 'Kilometer pro Monat',
+    value: String(state.settings.freeKm), save: v => saveSettings({ freeKm: Math.max(0, Math.round(v)) }),
+  }));
+}
+function editPrice() {
+  openSheet(numberScreen({
+    label: 'Einstellungen', title: 'Preis pro Mehrkilometer', unit: 'Euro pro Kilometer', decimal: true,
+    value: String(state.settings.pricePerKm).replace('.', ','), save: v => saveSettings({ pricePerKm: Math.max(0, v) }),
+  }));
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+// Import / Export
+// ═════════════════════════════════════════════════════════════════════════════
+$('#file-in').addEventListener('change', async e => {
+  const files = [...e.target.files];
+  e.target.value = '';
+  if (!files.length) return;
+  let added = 0, skipped = 0, failed = 0;
+  for (const f of files) {
+    try {
+      const r = await api('POST', '/import', await f.text(), true);
+      added += r.added; skipped += r.skipped;
+    } catch { failed++; }
+  }
+  await load();
+  if (added || skipped) toast(`${added} Fahrten importiert` + (skipped ? ` · ${skipped} schon da` : ''));
+});
+
+function openExport() {
+  const ym = state.view === 'month' ? state.month : currentYM();
+  const row = (action, ic, t, s) => `
+    <button class="row" data-x="${action}">
+      <span class="ic dark">${icon(ic)}</span>
+      <span class="main"><div class="t">${t}</div><div class="s">${s}</div></span>
+      ${icon('next').replace('<svg', '<svg class="chev"')}
+    </button>`;
+  openSheet({
+    label: 'Export',
+    title: monthName(ym),
+    mount(el) {
+      const { trips, total } = monthStats(ym);
+      el.insertAdjacentHTML('beforeend', `
+        <div class="summary">
+          ${row('pdf', 'doc', 'PDF-Abrechnung', `${trips.length} Fahrten · ${fmtKm(total)} km`)}
+          ${row('csv', 'table', 'CSV-Datei', 'Für Excel & zum Wiedereinspielen')}
+        </div>
+        <p class="fine">Anderen Monat exportieren? Wähle ihn vorher im Tab <b>Monat</b> aus.</p>`);
+      el.querySelectorAll('[data-x]').forEach(b => b.addEventListener('click', async () => {
+        if (b.dataset.x === 'csv') exportCSV(ym); else await exportPDF(ym);
+        closeSheet();
+      }));
+    },
+  });
+}
+
+function csvString(rows) {
+  return rows.map(r => r.map(c => '"' + String(c).replace(/"/g, '""') + '"').join(';')).join('\r\n');
+}
+function download(name, content, type) {
+  const blob = content instanceof Blob ? content : new Blob(['﻿' + content], { type });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = name;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 4000);
+}
+
+// Gleiches Format wie die alte Version → kompatibel mit bisherigen Dateien
+function exportCSV(ym) {
+  const { trips, total, extra, cost } = monthStats(ym);
+  const s = state.settings;
+  const rows = [
+    ['Datum', 'Zweck der Fahrt', 'KM-Stand Beginn', 'KM-Stand Ende', 'Kilometer'],
+    ...trips.map(t => [fmtDateDE(t.date), t.purpose, t.km_start || '', t.km_end || '', t.km]),
+    [],
+    ['', '', '', 'Gesamt KM:', total],
+    ['', '', '', 'Freikilometer:', s.freeKm],
+    ['', '', '', 'Mehrkilometer:', extra],
+    ['', '', '', 'Preis/km (EUR):', s.pricePerKm.toFixed(2)],
+    ['', '', '', 'Zu zahlen (EUR):', cost.toFixed(2)],
+  ];
+  download(`Fahrtenbuch_${ym}.csv`, csvString(rows), 'text/csv;charset=utf-8');
+  toast('CSV exportiert');
+}
+
+function exportBackup() {
+  const rows = [
+    ['Datum', 'Zweck der Fahrt', 'KM-Stand Beginn', 'KM-Stand Ende', 'Kilometer'],
+    ...state.trips.map(t => [fmtDateDE(t.date), t.purpose, t.km_start || '', t.km_end || '', t.km]),
+  ];
+  download(`Fahrtenbuch_Sicherung_${todayIso()}.csv`, csvString(rows), 'text/csv;charset=utf-8');
+  toast(`${state.trips.length} Fahrten gesichert`);
+}
+
+function loadScript(src) {
+  return new Promise((res, rej) => {
+    const s = document.createElement('script');
+    s.src = src; s.onload = res; s.onerror = () => rej(new Error('PDF-Bibliothek konnte nicht geladen werden'));
+    document.head.appendChild(s);
+  });
+}
+async function ensurePdfLib() {
+  if (window.jspdf?.jsPDF?.API?.autoTable) return;
+  await loadScript('/vendor/jspdf.js');
+  await loadScript('/vendor/jspdf-autotable.js');
+}
+
+async function exportPDF(ym) {
+  try { await ensurePdfLib(); } catch (e) { toast(e.message, true); return; }
+  const { jsPDF } = window.jspdf;
+  const { trips, total, extra, cost } = monthStats(ym);
+  const s = state.settings;
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+  const gray = [150, 155, 160];
+
+  doc.setFont('helvetica', 'normal'); doc.setFontSize(10); doc.setTextColor(...gray);
+  doc.text('Fahrtenbuch Jacobsen', 20, 22);
+  doc.setFont('helvetica', 'bold'); doc.setFontSize(24); doc.setTextColor(0);
+  doc.text(monthName(ym), 20, 33);
+
+  const kpis = [
+    ['Gefahren', `${fmtKm(total)} km`],
+    ['Freikilometer', `${fmtKm(s.freeKm)} km`],
+    ['Mehrkilometer', `${fmtKm(extra)} km`],
+    ['Zu zahlen', fmtEur(cost).replace('€', 'EUR')],
+  ];
+  kpis.forEach(([k, v], i) => {
+    const x = 20 + i * 43;
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(...gray);
+    doc.text(k, x, 48);
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(14); doc.setTextColor(0);
+    doc.text(v, x, 55);
+  });
+
+  doc.autoTable({
+    startY: 66,
+    head: [['Datum', 'Zweck der Fahrt', 'KM Start', 'KM Ende', 'KM']],
+    body: trips.map(t => [fmtDateDE(t.date), t.purpose, t.km_start || '—', t.km_end || '—', fmtKm(tripKm(t))]),
+    foot: [['', '', '', 'Gesamt', `${fmtKm(total)} km`]],
+    theme: 'plain',
+    styles: { font: 'helvetica', fontSize: 9.5, cellPadding: { top: 3.2, bottom: 3.2, left: 2, right: 2 }, textColor: 20 },
+    headStyles: { fontStyle: 'bold', textColor: 150, fontSize: 8.5 },
+    footStyles: { fontStyle: 'bold', textColor: 0 },
+    columnStyles: { 0: { cellWidth: 26 }, 2: { cellWidth: 22, halign: 'right' }, 3: { cellWidth: 22, halign: 'right' }, 4: { cellWidth: 20, halign: 'right' } },
+    didParseCell: d => { if (d.section !== 'body' && d.column.index >= 2) d.cell.styles.halign = 'right'; },
+    didDrawCell: d => {
+      if (d.section === 'body' || d.section === 'head') {
+        doc.setDrawColor(235); doc.setLineWidth(0.2);
+        doc.line(d.cell.x, d.cell.y + d.cell.height, d.cell.x + d.cell.width, d.cell.y + d.cell.height);
+      }
+    },
+    margin: { left: 18, right: 18 },
+  });
+
+  const ph = doc.internal.pageSize.height;
+  doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(...gray);
+  doc.text(`Erstellt am ${new Date().toLocaleDateString('de-DE')} · Fahrtenbuch Jacobsen`, 20, ph - 12);
+
+  const name = `Fahrtenbuch_${ym}.pdf`;
+  const blob = doc.output('blob');
+  // Auf dem iPhone: Teilen-Menü (Speichern in Dateien, AirDrop, Mail …)
+  const file = new File([blob], name, { type: 'application/pdf' });
+  if (navigator.canShare?.({ files: [file] })) {
+    try { await navigator.share({ files: [file], title: name }); return; } catch (e) { if (e.name === 'AbortError') return; }
+  }
+  download(name, blob);
+  toast('PDF exportiert');
+}
+
+// ── Toast ────────────────────────────────────────────────────────────────────
+let toastTimer;
+function toast(msg, isError = false) {
+  const el = $('#toast');
+  el.querySelector('.ti').innerHTML = icon(isError ? 'alert' : 'check');
+  el.querySelector('span:last-child').textContent = msg;
+  el.classList.toggle('error', isError);
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 2600);
+}
+
+// ── Start ────────────────────────────────────────────────────────────────────
+hydrateIcons();
+load();
+// Beim Zurückkehren in die App (z. B. nach Mitternacht) aktualisieren
+document.addEventListener('visibilitychange', () => { if (!document.hidden && !sheet.stack.length) load(); });
+</script>
+</body>
+</html>
