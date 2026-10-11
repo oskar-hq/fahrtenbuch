@@ -443,21 +443,29 @@ function lastOdo(excludeId) {
   return '';
 }
 
-// Häufige Zwecke, gewichtet nach Häufigkeit und Aktualität
+// Zielvorschläge – werden bei jedem Öffnen aus den gespeicherten Fahrten berechnet.
+// Jede Fahrt zählt nach Alter: heute 1, nach 60 Tagen 0,5, nach 120 Tagen 0,25 …
+// So wandern Ziele, zu denen du gerade oft fährst, schnell nach oben, alte rutschen nach unten.
+const HALF_LIFE_DAYS = 60;
 function purposeSuggestions(query) {
-  const score = new Map();
-  const n = state.trips.length;
-  state.trips.forEach((t, i) => {
-    const key = t.purpose.trim();
-    const cur = score.get(key) || 0;
-    score.set(key, cur + 1 + (i / Math.max(1, n)) * 2);
-  });
+  const now = Date.now();
+  const groups = new Map();   // Kleinschreibung → { label, score }
+  for (const t of state.trips) {
+    const label = t.purpose.trim();
+    if (!label) continue;
+    const key = label.toLowerCase();
+    const ageDays = Math.max(0, (now - parseIso(t.date).getTime()) / 864e5);
+    const g = groups.get(key) || { label, score: 0 };
+    g.score += 0.5 ** (ageDays / HALF_LIFE_DAYS);
+    g.label = label;          // jüngste Schreibweise anzeigen (Fahrten sind nach Datum sortiert)
+    groups.set(key, g);
+  }
   const q = (query || '').trim().toLowerCase();
-  return [...score.entries()]
-    .filter(([p]) => !q || (p.toLowerCase().includes(q) && p.toLowerCase() !== q))
-    .sort((a, b) => b[1] - a[1])
+  return [...groups.entries()]
+    .filter(([key]) => !q || (key.includes(q) && key !== q))
+    .sort((a, b) => b[1].score - a[1].score)
     .slice(0, 6)
-    .map(([p]) => p);
+    .map(([, g]) => g.label);
 }
 
 function monthStats(ym) {
