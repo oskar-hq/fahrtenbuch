@@ -32,6 +32,7 @@ db.exec(`
 
   INSERT OR IGNORE INTO settings (key, value) VALUES ('freeKm', '300');
   INSERT OR IGNORE INTO settings (key, value) VALUES ('pricePerKm', '0.22');
+  INSERT OR IGNORE INTO settings (key, value) VALUES ('name', 'Oskar Jacobsen');
 `);
 
 app.use(express.json());
@@ -190,15 +191,18 @@ app.post('/api/import', (req, res) => {
 
 app.get('/api/settings', (req, res) => {
   const s = {};
-  db.prepare('SELECT key, value FROM settings').all().forEach(r => s[r.key] = parseFloat(r.value));
+  db.prepare('SELECT key, value FROM settings').all().forEach(r => {
+    s[r.key] = r.key === 'name' ? r.value : parseFloat(r.value);
+  });
   res.json(s);
 });
 
 app.post('/api/settings', (req, res) => {
-  const { freeKm, pricePerKm } = req.body;
+  const { freeKm, pricePerKm, name } = req.body;
   const stmt = db.prepare('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)');
   if (freeKm !== undefined) stmt.run('freeKm', String(freeKm));
   if (pricePerKm !== undefined) stmt.run('pricePerKm', String(pricePerKm));
+  if (typeof name === 'string' && name.trim()) stmt.run('name', name.trim().slice(0, 60));
   res.json({ ok: true });
 });
 

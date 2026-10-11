@@ -251,7 +251,7 @@
       <button class="tab active" data-view="trips">Fahrten</button>
       <button class="tab" data-view="month">Monat</button>
     </nav>
-    <button class="avatar" data-view="profile" aria-label="Einstellungen">J</button>
+    <button class="avatar" data-view="profile" aria-label="Profil" id="avatar">&nbsp;</button>
   </header>
 
   <!-- FAHRTEN -->
@@ -283,29 +283,25 @@
 
   <!-- PROFIL / EINSTELLUNGEN -->
   <section class="view" id="view-profile">
-    <div class="eyebrow">Fahrtenbuch</div>
-    <div class="hero">Jacobsen</div>
+    <div class="eyebrow">Persönlich</div>
+    <div class="hero" id="p-name">&nbsp;</div>
     <div class="cards" id="p-cards"></div>
     <div class="section">
-      <div class="section-head">Einstellungen</div>
-      <button class="row" data-action="set-free">
+      <div class="section-head">Services</div>
+      <button class="row" data-action="sheet-conditions">
         <span class="ic dark" data-icon="road"></span>
-        <span class="main"><div class="t">Freikilometer</div><div class="s">Kostenlose Kilometer pro Monat</div></span>
+        <span class="main"><div class="t">Konditionen</div><div class="s">Freikilometer, Preis pro Mehrkilometer</div></span>
       </button>
-      <button class="row" data-action="set-price">
-        <span class="ic dark" data-icon="euro"></span>
-        <span class="main"><div class="t">Preis pro Mehrkilometer</div><div class="s">Wird ab den Freikilometern berechnet</div></span>
+      <button class="row" data-action="sheet-data">
+        <span class="ic dark" data-icon="doc"></span>
+        <span class="main"><div class="t">Daten</div><div class="s">Import, Sicherung, Monatsexport</div></span>
       </button>
-      <button class="row" data-action="import">
-        <span class="ic dark" data-icon="upload"></span>
-        <span class="main"><div class="t">CSV importieren</div><div class="s">Exportierte Monatsdateien einspielen</div></span>
-      </button>
-      <button class="row" data-action="backup">
-        <span class="ic dark" data-icon="download"></span>
-        <span class="main"><div class="t">Alle Fahrten sichern</div><div class="s">Komplette CSV, wieder importierbar</div></span>
+      <button class="row" data-action="sheet-account">
+        <span class="ic dark" data-icon="user"></span>
+        <span class="main"><div class="t">Konto</div><div class="s">Name für Abrechnungen</div></span>
       </button>
     </div>
-    <p class="foot-note">Version 2.0 · Daten liegen in <b>SQLite</b> auf deinem Server. Doppelte Fahrten werden beim Import automatisch übersprungen.</p>
+    <p class="foot-note">Version 2.0 · Daten liegen in <b>SQLite</b> auf deinem Server.</p>
     <input type="file" id="file-in" accept=".csv,text/csv" multiple hidden>
   </section>
 </div>
@@ -351,6 +347,7 @@ const ICONS = {
   table: '<path d="M4 5h16v14H4zM4 10h16M4 15h16M10 5v14"/>',
   trash: '<path d="M5 7h14M10 7V4h4v3M7 7l1 13h8l1-13"/>',
   cal: '<path d="M4 6h16v14H4zM4 10h16M8 3v4M16 3v4"/>',
+  user: '<circle cx="12" cy="8" r="4"/><path d="M4.5 20c1.2-3.6 4-5.5 7.5-5.5s6.3 1.9 7.5 5.5"/>',
   eye: '<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',
   alert: '<path d="M12 8v5M12 16.5v.5"/><circle cx="12" cy="12" r="9"/>',
 };
@@ -409,7 +406,7 @@ async function api(method, path, body, raw) {
 // ── Zustand ──────────────────────────────────────────────────────────────────
 const state = {
   trips: [],
-  settings: { freeKm: 300, pricePerKm: 0.22 },
+  settings: { freeKm: 300, pricePerKm: 0.22, name: '' },
   view: 'trips',
   month: currentYM(),
 };
@@ -417,7 +414,7 @@ const state = {
 async function load() {
   const [trips, settings] = await Promise.all([api('GET', '/trips'), api('GET', '/settings')]);
   state.trips = trips;
-  state.settings = { freeKm: 300, pricePerKm: 0.22, ...settings };
+  state.settings = { freeKm: 300, pricePerKm: 0.22, name: '', ...settings };
   render();
 }
 
@@ -458,6 +455,7 @@ function monthStats(ym) {
 function render() {
   document.querySelectorAll('[data-view]').forEach(b => b.classList.toggle('active', b.dataset.view === state.view));
   document.querySelectorAll('.view').forEach(v => v.classList.toggle('active', v.id === 'view-' + state.view));
+  $('#avatar').textContent = (state.settings.name.trim()[0] || 'F').toUpperCase();
   if (state.view === 'trips') renderHome();
   if (state.view === 'month') renderMonth();
   if (state.view === 'profile') renderProfile();
@@ -534,6 +532,7 @@ function renderMonth() {
 
 function renderProfile() {
   const s = state.settings;
+  $('#p-name').textContent = s.name || 'Fahrtenbuch';
   $('#p-cards').innerHTML = cards([
     ['Freikilometer', `${fmtKm(s.freeKm)} km`],
     ['Preis', `${s.pricePerKm.toLocaleString('de-DE', { minimumFractionDigits: 2 })} €/km`],
@@ -609,10 +608,9 @@ document.addEventListener('click', e => {
   ({
     'new': startNew,
     'export': openExport,
-    'set-free': editFreeKm,
-    'set-price': editPrice,
-    'import': () => $('#file-in').click(),
-    'backup': exportBackup,
+    'sheet-conditions': () => openSheet(conditionsScreen()),
+    'sheet-data': () => openSheet(dataScreen()),
+    'sheet-account': () => openSheet(accountScreen()),
   })[a.dataset.action]?.();
 });
 
@@ -660,7 +658,7 @@ function updateFoot() {
   if (!scr) return;
   const title = typeof scr.title === 'function' ? scr.title() : scr.title;
   const tEl = $('#s-title'); if (tEl) tEl.textContent = title;
-  $('#btn-back').innerHTML = icon(sheet.stack.length > 1 ? 'back' : 'close');
+  $('#btn-back').innerHTML = icon(sheet.stack.length > 1 || scr.list ? 'back' : 'close');
   const next = $('#btn-next');
   if (scr.next) {
     next.style.display = '';
@@ -979,8 +977,8 @@ function numberScreen({ label, title, value, decimal, unit, save }) {
       enabled: () => v !== '' && !isNaN(parseFloat(v.replace(',', '.'))),
       async run() {
         await save(parseFloat(v.replace(',', '.')));
-        closeSheet();
         render();
+        sheet.stack.length > 1 ? pop() : closeSheet();
       },
     },
   };
@@ -991,17 +989,83 @@ async function saveSettings(patch) {
   state.settings = next;
   toast('Gespeichert');
 }
-function editFreeKm() {
-  openSheet(numberScreen({
-    label: 'Einstellungen', title: 'Freikilometer pro Monat', unit: 'Kilometer pro Monat',
-    value: String(state.settings.freeKm), save: v => saveSettings({ freeKm: Math.max(0, Math.round(v)) }),
-  }));
+const chev = () => icon('next').replace('<svg', '<svg class="chev"');
+
+// Liste wie in den Einstellungen: Titel, grauer Wert, Pfeil – nur Zurück-Knopf unten
+function listScreen({ label, title, rows, after }) {
+  return {
+    label, title, list: true,
+    mount(el) {
+      const items = rows();
+      el.insertAdjacentHTML('beforeend', `<div class="summary">${items.map((r, i) => `
+        <button class="row" data-i="${i}">
+          <span class="main"><div class="t">${esc(r.t)}</div><div class="s">${esc(r.s)}</div></span>
+          ${chev()}
+        </button>`).join('')}</div>${after ? `<p class="fine">${after}</p>` : ''}`);
+      el.querySelectorAll('[data-i]').forEach(b => b.addEventListener('click', () => items[b.dataset.i].go()));
+    },
+  };
 }
-function editPrice() {
-  openSheet(numberScreen({
-    label: 'Einstellungen', title: 'Preis pro Mehrkilometer', unit: 'Euro pro Kilometer', decimal: true,
-    value: String(state.settings.pricePerKm).replace('.', ','), save: v => saveSettings({ pricePerKm: Math.max(0, v) }),
-  }));
+
+const fmtPrice = p => p.toLocaleString('de-DE', { minimumFractionDigits: 2 });
+
+function conditionsScreen() {
+  return listScreen({
+    title: 'Konditionen',
+    rows: () => [
+      { t: 'Freikilometer', s: `${fmtKm(state.settings.freeKm)} km pro Monat`, go: () => push(numberScreen({
+        label: 'Konditionen', title: 'Freikilometer pro Monat', unit: 'Kilometer pro Monat',
+        value: String(state.settings.freeKm), save: v => saveSettings({ freeKm: Math.max(0, Math.round(v)) }),
+      })) },
+      { t: 'Preis pro Mehrkilometer', s: `${fmtPrice(state.settings.pricePerKm)} € pro Kilometer`, go: () => push(numberScreen({
+        label: 'Konditionen', title: 'Preis pro Mehrkilometer', unit: 'Euro pro Kilometer', decimal: true,
+        value: fmtPrice(state.settings.pricePerKm), save: v => saveSettings({ pricePerKm: Math.max(0, v) }),
+      })) },
+    ],
+    after: 'Fahrten über die Freikilometer hinaus werden in der Monatsabrechnung mit diesem Preis berechnet.',
+  });
+}
+
+function dataScreen() {
+  return listScreen({
+    title: 'Daten',
+    rows: () => [
+      { t: 'CSV importieren', s: 'Monatsdateien einspielen', go: () => $('#file-in').click() },
+      { t: 'Alle Fahrten sichern', s: `${state.trips.length} Fahrten als CSV-Datei`, go: exportBackup },
+      { t: 'Monat exportieren', s: 'PDF-Abrechnung oder CSV', go: () => push(exportScreen(currentYM())) },
+    ],
+    after: 'Fahrten, die schon vorhanden sind, werden beim Import automatisch übersprungen.',
+  });
+}
+
+function accountScreen() {
+  return listScreen({
+    title: 'Konto',
+    rows: () => [
+      { t: 'Name', s: state.settings.name || '—', go: () => push(nameScreen()) },
+    ],
+    after: 'Der Name steht auf den PDF-Abrechnungen.',
+  });
+}
+
+function nameScreen() {
+  let v = state.settings.name;
+  const save = async () => {
+    await saveSettings({ name: v.trim() });
+    render();
+    pop();
+  };
+  return {
+    label: 'Konto', title: 'Name',
+    mount(el) {
+      el.insertAdjacentHTML('beforeend', `<input class="text-in" id="n-in" type="text" autocomplete="name" autocapitalize="words" enterkeyhint="done" value="${esc(v)}">`);
+      const inp = $('#n-in');
+      inp.addEventListener('input', () => { v = inp.value; updateFoot(); });
+      inp.addEventListener('keydown', e => { if (e.key === 'Enter' && v.trim()) { e.preventDefault(); save(); } });
+      setTimeout(() => inp.focus(), 350);
+    },
+    next: { label: 'Speichern', icon: 'check', enabled: () => !!v.trim(), run: save },
+  };
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
@@ -1019,18 +1083,22 @@ $('#file-in').addEventListener('change', async e => {
     } catch { failed++; }
   }
   await load();
+  if (sheet.stack.length) showScreen(null);
   if (added || skipped) toast(`${added} Fahrten importiert` + (skipped ? ` · ${skipped} schon da` : ''));
 });
 
 function openExport() {
-  const ym = state.view === 'month' ? state.month : currentYM();
+  openSheet(exportScreen(state.view === 'month' ? state.month : currentYM()));
+}
+
+function exportScreen(ym) {
   const row = (action, ic, t, s) => `
     <button class="row" data-x="${action}">
       <span class="ic dark">${icon(ic)}</span>
       <span class="main"><div class="t">${t}</div><div class="s">${s}</div></span>
       ${icon('next').replace('<svg', '<svg class="chev"')}
     </button>`;
-  openSheet({
+  return {
     label: 'Export',
     title: monthName(ym),
     mount(el) {
@@ -1046,7 +1114,7 @@ function openExport() {
         closeSheet();
       }));
     },
-  });
+  };
 }
 
 function csvString(rows) {
@@ -1110,7 +1178,7 @@ async function exportPDF(ym) {
   const gray = [150, 155, 160];
 
   doc.setFont('helvetica', 'normal'); doc.setFontSize(10); doc.setTextColor(...gray);
-  doc.text('Fahrtenbuch Jacobsen', 20, 22);
+  doc.text(`Fahrtenbuch ${s.name}`.trim(), 20, 22);
   doc.setFont('helvetica', 'bold'); doc.setFontSize(24); doc.setTextColor(0);
   doc.text(monthName(ym), 20, 33);
 
@@ -1150,7 +1218,7 @@ async function exportPDF(ym) {
 
   const ph = doc.internal.pageSize.height;
   doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(...gray);
-  doc.text(`Erstellt am ${new Date().toLocaleDateString('de-DE')} · Fahrtenbuch Jacobsen`, 20, ph - 12);
+  doc.text(`Erstellt am ${new Date().toLocaleDateString('de-DE')} · Fahrtenbuch ${s.name}`.trim(), 20, ph - 12);
 
   const name = `Fahrtenbuch_${ym}.pdf`;
   const blob = doc.output('blob');
