@@ -40,7 +40,9 @@
     font-family: var(--font); background: var(--bg); color: var(--ink);
     -webkit-font-smoothing: antialiased; min-height: 100vh; min-height: 100dvh;
     -webkit-tap-highlight-color: transparent; overscroll-behavior-y: none;
+    -webkit-user-select: none; user-select: none; -webkit-touch-callout: none;
   }
+  input { -webkit-user-select: text; user-select: text; }
   body.locked { overflow: hidden; }
   button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; touch-action: manipulation; -webkit-user-select: none; user-select: none; }
   input { font: inherit; color: inherit; }
@@ -89,8 +91,8 @@
   /* ── Listen ─────────────────────────────────────────── */
   .section { margin-top: 28px; }
   .section-head { display: flex; align-items: center; justify-content: space-between; font-size: 13px; font-weight: 600; color: var(--gray); margin-bottom: 4px; }
-  .section-head .asides { display: flex; gap: 18px; }
-  .section-head .aside { font-size: 13px; color: var(--ink); font-weight: 600; }
+  .section-head .aside { font-size: 13px; color: var(--gray); font-weight: 600; margin: -10px -10px -10px 0; padding: 10px; }
+  .section-head .aside:active { opacity: .5; }
 
   .row {
     display: flex; align-items: center; gap: 14px; width: 100%; padding: 11px 0; text-align: left;
@@ -147,11 +149,11 @@
   .sheet:not(.open) .sheet-card { visibility: hidden; transition: transform .42s var(--ease), visibility 0s .42s; }
   .sheet.open .sheet-card { transform: none; }
   .sheet.dragging .sheet-card { transition: none; }
-  .grab { flex: 0 0 auto; padding: 10px 0 8px; display: flex; justify-content: center; touch-action: none; cursor: grab; }
+  .grab { flex: 0 0 auto; padding: 10px 0 8px; display: flex; justify-content: center; cursor: grab; }
   .grab i { width: 34px; height: 4px; border-radius: 4px; background: var(--gray-3); }
-  .screen { flex: 1; min-height: 0; display: flex; flex-direction: column; padding: 22px var(--pad) 0; overflow-y: auto; -webkit-overflow-scrolling: touch; }
-  .screen.in-fwd { animation: inFwd .32s var(--ease); }
-  .screen.in-back { animation: inBack .32s var(--ease); }
+  .screen { flex: 1; min-height: 0; display: flex; flex-direction: column; padding: 22px var(--pad) 0; overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; will-change: transform; }
+  .screen.in-fwd { animation: inFwd .28s var(--ease); }
+  .screen.in-back { animation: inBack .28s var(--ease); }
   @keyframes inFwd { from { opacity: 0; transform: translateX(24px); } }
   @keyframes inBack { from { opacity: 0; transform: translateX(-24px); } }
   .s-label { font-size: 12px; font-weight: 600; color: var(--gray); }
@@ -239,14 +241,16 @@
   </header>
 
   <div id="h-live"></div>
+  <div id="h-body">
   <div class="hero num" id="h-km">&nbsp;</div>
   <div class="delta" id="h-delta">&nbsp;</div>
   <div class="sub" id="h-sub">&nbsp;</div>
   <div class="chart" id="h-chart"></div>
 
   <div class="section">
-    <div class="section-head"><span>Fahrten</span><span class="asides"><button class="aside" data-action="new">Nachtragen</button><button class="aside" data-action="all" id="btn-all">Alle</button></span></div>
+    <div class="section-head"><span>Fahrten</span><button class="aside" data-action="all" id="btn-all">Alle</button></div>
     <div id="h-list"></div>
+  </div>
   </div>
   <input type="file" id="file-in" accept=".csv,text/csv" multiple hidden>
 </div>
@@ -421,12 +425,16 @@ function render() {
     : `<span>Fahrt starten</span>${icon('plus')}`;
 
   const o = state.open;
+  const appeared = o && !$('#h-live .live');
   $('#h-live').innerHTML = o ? `
     <button class="live" data-action="open-trip">
       <span class="dot"></span>
       <span class="main"><div class="t">Unterwegs · ${esc(o.purpose)}</div><div class="s num">${relDate(o.date)} · ab ${fmtOdo(o.km_start)}</div></span>
       ${icon('next')}
     </button>` : '';
+  if (appeared && !reduceMotion.matches) $('#h-live .live').animate(
+    [{ opacity: 0, transform: 'scale(.96)' }, { opacity: 1, transform: 'none' }],
+    { duration: 320, easing: 'cubic-bezier(.23,1,.32,1)' });
 
   const ym = state.month;
   const isCurrent = ym === currentYM();
@@ -458,10 +466,20 @@ function render() {
   }
 
   const recent = [...trips].reverse().slice(0, 3);
-  $('#btn-all').style.display = trips.length > 3 ? '' : 'none';
-  $('#btn-all').textContent = `Alle ${trips.length}`;
+  $('#btn-all').textContent = trips.length > 3 ? `Alle ${trips.length}` : 'Alle';
   $('#h-list').innerHTML = recent.length ? recent.map(tripRow).join('')
     : `<div class="empty">${state.trips.length ? 'Keine Fahrten in diesem Monat.' : 'Noch keine Fahrten. Importiere deine CSV-Dateien über das Zahnrad oben rechts.'}</div>`;
+}
+
+const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)');
+function switchMonth(dir) {
+  state.month = shiftMonth(state.month, dir);
+  render();
+  // Räumliche Richtung zeigen: der neue Monat kommt von der Seite, auf die man getippt hat
+  $('#h-body').animate(
+    reduceMotion.matches ? [{ opacity: 0.4 }, { opacity: 1 }]
+      : [{ opacity: 0, transform: `translateX(${dir * 18}px)` }, { opacity: 1, transform: 'none' }],
+    { duration: 240, easing: 'cubic-bezier(.23,1,.32,1)' });
 }
 
 function tripRow(t) {
@@ -477,7 +495,7 @@ function allTripsScreen(ym) {
     label: 'Fahrten', title: monthName(ym), list: true,
     mount(el) {
       const trips = [...monthStats(ym).trips].reverse();
-      el.insertAdjacentHTML('beforeend', `<div class="summary">${trips.map(tripRow).join('')}</div>`);
+      el.insertAdjacentHTML('beforeend', `<div class="summary">${trips.length ? trips.map(tripRow).join('') : '<div class="empty">Keine Fahrten in diesem Monat.</div>'}</div>`);
       el.querySelectorAll('[data-trip]').forEach(b => b.addEventListener('click', e => {
         e.stopPropagation();
         const t = state.trips.find(x => x.id === Number(b.dataset.trip));
@@ -539,11 +557,10 @@ document.addEventListener('click', e => {
     'primary': () => state.open ? finishTrip() : startTrip(),
     'open-trip': openTripDetails,
     'all': () => openSheet(allTripsScreen(state.month)),
-    'new': () => { newDraft(); openSheet(screenDate()); },
     'export': () => openSheet(exportScreen(state.month)),
     'settings': () => openSheet(settingsScreen()),
-    'prev': () => { state.month = shiftMonth(state.month, -1); render(); },
-    'next': () => { if (state.month < currentYM()) { state.month = shiftMonth(state.month, 1); render(); } },
+    'prev': () => switchMonth(-1),
+    'next': () => { if (state.month < currentYM()) switchMonth(1); },
   })[a.dataset.action]?.();
 });
 
@@ -553,6 +570,7 @@ document.addEventListener('click', e => {
 const sheet = { stack: [], keypad: null };
 
 function openSheet(screen) {
+  gesture.reset();
   sheet.stack = [screen];
   document.body.classList.add('locked');
   $('#scrim').classList.add('open');
@@ -561,6 +579,7 @@ function openSheet(screen) {
   showScreen(null);
 }
 function closeSheet() {
+  gesture.reset();
   $('#scrim').classList.remove('open');
   $('#sheet').classList.remove('open');
   document.body.classList.remove('locked');
@@ -615,21 +634,136 @@ window.visualViewport?.addEventListener('resize', fitSheet);
 window.visualViewport?.addEventListener('scroll', fitSheet);
 window.addEventListener('resize', fitSheet);
 
-// Nach unten ziehen zum Schließen
-(() => {
-  let y0 = null, dy = 0;
-  const card = $('#sheet-card');
-  $('#grab').addEventListener('pointerdown', e => { y0 = e.clientY; dy = 0; $('#sheet').classList.add('dragging'); $('#grab').setPointerCapture(e.pointerId); });
-  $('#grab').addEventListener('pointermove', e => { if (y0 === null) return; dy = Math.max(0, e.clientY - y0); card.style.transform = `translateY(${dy}px)`; });
-  const end = () => {
-    if (y0 === null) return;
-    $('#sheet').classList.remove('dragging'); card.style.transform = '';
-    if (dy > 90 || dy < 4) closeSheet();
-    y0 = null;
+// ── Gesten im Sheet ──────────────────────────────────────────────────────────
+// Nach unten wischen (Inhalt ganz oben) → schließen. Vom linken Rand nach rechts → zurück.
+// Folgt dem Finger 1:1, entscheidet beim Loslassen über die Geschwindigkeit (Momentum-Projektion
+// wie bei iOS) und lässt sich jederzeit wieder greifen.
+const SNAP = 'cubic-bezier(.32,.72,0,1)';          // gleiche Kurve wie Öffnen/Schließen
+const FLING = 'cubic-bezier(.2,.8,.2,1)';          // Anfangssteigung 4 → passt zur Fingergeschwindigkeit
+const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+const rubber = (x, dim, c = 0.55) => (x * dim * c) / (dim + c * Math.abs(x));
+const project = (v, d = 0.99) => v * d / (1 - d);  // v in px/ms → Strecke bis zum Stillstand
+
+const gesture = (() => {
+  const card = $('#sheet-card'), scrim = $('#scrim'), scr = $('#screen');
+  let g = null, timer = null, suppressClick = false;
+
+  const offsetOf = el => { const m = getComputedStyle(el).transform; return m && m !== 'none' ? new DOMMatrix(m) : new DOMMatrix(); };
+  const velocity = () => {
+    const h = g.hist, last = h[h.length - 1];
+    let i = h.length - 1;
+    while (i > 0 && last.t - h[i - 1].t < 80) i--;
+    const first = h[i], dt = last.t - first.t;
+    return dt > 0 ? (last.v - first.v) / dt : 0;
   };
-  $('#grab').addEventListener('pointerup', end);
-  $('#grab').addEventListener('pointercancel', end);
+  const reset = () => {
+    clearTimeout(timer);
+    for (const el of [card, scr, scrim]) { el.style.transition = ''; el.style.transform = ''; el.style.opacity = ''; }
+  };
+
+  function start(x, y, target) {
+    if (!sheet.stack.length || g) return;
+    clearTimeout(timer);
+    // Läuft gerade eine Animation? Dort weitermachen, wo das Sheet gerade ist (unterbrechbar)
+    // Nur eigene, noch laufende Gesten-Animationen übernehmen (nicht die Einblend-Animation des Schritts)
+    const cardY = card.style.transform ? offsetOf(card).m42 : 0;
+    const scrX = scr.style.transform ? offsetOf(scr).m41 : 0;
+    g = { mode: 'pending', x0: x, y0: y, cardY, scrX, target, hist: [], h: card.offsetHeight, w: card.offsetWidth };
+    if (Math.abs(cardY) > 1 || Math.abs(scrX) > 1) {
+      card.style.transition = scr.style.transition = scrim.style.transition = 'none';
+      card.style.transform = `translateY(${cardY}px)`;
+      g.mode = cardY ? 'down' : 'back';
+    }
+  }
+
+  function move(x, y, e) {
+    if (!g) return;
+    const dx = x - g.x0, dy = y - g.y0;
+    if (g.mode === 'pending') {
+      if (Math.abs(dx) < 4 && Math.abs(dy) < 4) return;
+      const inScroller = g.target.closest('.screen');
+      if (g.x0 < 32 && dx > 0 && Math.abs(dx) > Math.abs(dy) && sheet.stack.length > 1) g.mode = 'back';
+      else if (dy > 0 && Math.abs(dy) >= Math.abs(dx) && (!inScroller || scr.scrollTop <= 0)) g.mode = 'down';
+      // nach oben: nur Gummiband, wenn es nichts zu scrollen gibt
+      else if (dy < 0 && Math.abs(dy) >= Math.abs(dx) && (!inScroller || scr.scrollHeight <= scr.clientHeight)) g.mode = 'down';
+      else { g = null; return; }
+      card.style.transition = scr.style.transition = scrim.style.transition = 'none';
+    }
+    if (e.cancelable) e.preventDefault();
+    suppressClick = true;
+    if (g.mode === 'down') {
+      const raw = g.cardY + dy;
+      const y2 = raw >= 0 ? raw : rubber(raw, g.h / 4);        // nach oben: gummiartiger Widerstand
+      card.style.transform = `translateY(${y2}px)`;
+      scrim.style.opacity = String(1 - clamp(y2 / g.h, 0, 1));
+      g.hist.push({ v: y2, t: e.timeStamp || performance.now() });
+    } else {
+      const x2 = Math.max(0, g.scrX + dx);
+      scr.style.transform = `translateX(${x2}px)`;
+      scr.style.opacity = String(1 - clamp(x2 / g.w, 0, 1) * 0.6);
+      g.hist.push({ v: x2, t: e.timeStamp || performance.now() });
+    }
+    if (g.hist.length > 12) g.hist.shift();
+  }
+
+  function end() {
+    if (!g) return;
+    const mode = g.mode, hist = g.hist;
+    if (mode === 'pending' || !hist.length) { g = null; return; }
+    const v = velocity(), pos = hist[hist.length - 1].v, size = mode === 'down' ? g.h : g.w;
+    const commit = pos + project(Math.max(0, v)) > size * 0.4 && v > -0.05;
+    g = null;
+    const remaining = commit ? size - pos : pos;
+    const dur = commit && v > 0.1 ? clamp(4 * remaining / v, 160, 360) : 380;
+    const ease = commit && v > 0.1 ? FLING : SNAP;
+    if (mode === 'down') {
+      card.style.transition = `transform ${dur}ms ${ease}`;
+      scrim.style.transition = `opacity ${dur}ms ${ease}`;
+      card.style.transform = `translateY(${commit ? size : 0}px)`;
+      scrim.style.opacity = commit ? '0' : '1';
+      timer = setTimeout(() => {
+        if (commit) { card.style.transition = 'none'; closeSheet(); requestAnimationFrame(reset); }
+        else reset();
+      }, dur);
+    } else {
+      scr.style.transition = `transform ${dur}ms ${ease}, opacity ${dur}ms ${ease}`;
+      scr.style.transform = `translateX(${commit ? size : 0}px)`;
+      scr.style.opacity = commit ? '0' : '1';
+      timer = setTimeout(() => { reset(); if (commit) pop(); }, dur);
+    }
+  }
+
+  // Touch (iPhone): passiv starten, beim ersten Bewegen entscheiden und ggf. Scrollen verhindern
+  card.addEventListener('touchstart', e => { if (e.touches.length === 1) start(e.touches[0].clientX, e.touches[0].clientY, e.target); }, { passive: true });
+  card.addEventListener('touchmove', e => { if (e.touches.length === 1) move(e.touches[0].clientX, e.touches[0].clientY, e); else g = null; }, { passive: false });
+  card.addEventListener('touchend', end);
+  card.addEventListener('touchcancel', end);
+  // Maus (Desktop)
+  card.addEventListener('pointerdown', e => { if (e.pointerType === 'mouse') start(e.clientX, e.clientY, e.target); });
+  window.addEventListener('pointermove', e => { if (e.pointerType === 'mouse' && g) move(e.clientX, e.clientY, e); });
+  window.addEventListener('pointerup', e => { if (e.pointerType === 'mouse') end(); });
+  // Nach einer Wischgeste keinen versehentlichen Tipp auslösen
+  card.addEventListener('click', e => { if (suppressClick) { e.stopPropagation(); e.preventDefault(); } }, true);
+  card.addEventListener('touchstart', () => { suppressClick = false; }, { passive: true, capture: true });
+  card.addEventListener('pointerdown', e => { if (e.pointerType === 'mouse') suppressClick = false; }, true);
+
+  return { reset };
 })();
+
+// iOS zeigt :active (Druck-Feedback) nur, wenn es einen Touch-Listener gibt
+document.addEventListener('touchstart', () => {}, { passive: true });
+
+// Haptik: iOS 18+ löst beim Umschalten eines versteckten Switches ein Tippen aus, sonst Vibration API.
+// Nur für echte Abschlüsse (Fahrt gestartet / gespeichert), nicht für jeden Tastendruck.
+function haptic() {
+  if (navigator.vibrate) { navigator.vibrate(10); return; }
+  const label = document.createElement('label');
+  label.innerHTML = '<input type="checkbox" switch style="display:none">';
+  label.style.display = 'none';
+  document.head.appendChild(label);
+  label.click();
+  label.remove();
+}
 
 // ── Ziffernblock ─────────────────────────────────────────────────────────────
 // value: eingetippte Zeichen. fresh: vorbelegter Wert, wird beim ersten Tippen ersetzt.
@@ -655,7 +789,6 @@ function press(kp, k) {
     v += k;
   }
   kp.fresh = false; kp.value = v;
-  navigator.vibrate?.(5);
   kp.onChange(v);
   updateFoot();
 }
@@ -874,6 +1007,7 @@ function screenEnd(fromSummary, finish) {
 }
 
 async function finishOpen() {
+  haptic();
   const btn = $('#btn-next'); btn.disabled = true;
   let trip;
   try { trip = await api('POST', '/open/finish', { km_end: draft.end }); }
@@ -891,6 +1025,7 @@ function screenPurpose(fromSummary) {
     draft.purpose = val.trim();
     if (fromSummary) { if (await afterEdit()) pop(); return; }
     if (starting) {
+      haptic();
       try { await saveOpen(); } catch { return; }
       closeSheet();
       await load();
@@ -1011,6 +1146,7 @@ function screenSummary() {
       label: 'Speichern', icon: 'check',
       enabled: () => draftKm() > 0 && !!draft.purpose.trim() && !!draft.date,
       async run() {
+        haptic();
         const btn = $('#btn-next'); btn.disabled = true;
         const body = { date: draft.date, purpose: draft.purpose.trim(), km_start: draft.start || null, km_end: draft.end || null, km: draftKm() };
         try {
