@@ -89,6 +89,7 @@
   /* ── Listen ─────────────────────────────────────────── */
   .section { margin-top: 28px; }
   .section-head { display: flex; align-items: center; justify-content: space-between; font-size: 13px; font-weight: 600; color: var(--gray); margin-bottom: 4px; }
+  .section-head .asides { display: flex; gap: 18px; }
   .section-head .aside { font-size: 13px; color: var(--ink); font-weight: 600; }
 
   .row {
@@ -244,7 +245,7 @@
   <div class="chart" id="h-chart"></div>
 
   <div class="section">
-    <div class="section-head"><span>Fahrten</span><button class="aside" data-action="all" id="btn-all">Alle</button></div>
+    <div class="section-head"><span>Fahrten</span><span class="asides"><button class="aside" data-action="new">Nachtragen</button><button class="aside" data-action="all" id="btn-all">Alle</button></span></div>
     <div id="h-list"></div>
   </div>
   <input type="file" id="file-in" accept=".csv,text/csv" multiple hidden>
@@ -365,9 +366,11 @@ async function load() {
 }
 
 // Letzter bekannter KM-Stand = Endstand der zeitlich letzten Fahrt
-function lastOdo(excludeId) {
+// Mit Datum: letzter Endstand bis einschließlich diesem Tag (für nachgetragene Fahrten)
+function lastOdo(excludeId, uptoDate) {
   for (let i = state.trips.length - 1; i >= 0; i--) {
     const t = state.trips[i];
+    if (uptoDate && t.date > uptoDate) continue;
     if (t.id !== excludeId && t.km_end) return String(t.km_end);
   }
   return '';
@@ -455,7 +458,7 @@ function render() {
   }
 
   const recent = [...trips].reverse().slice(0, 3);
-  $('#btn-all').style.visibility = trips.length > 3 ? 'visible' : 'hidden';
+  $('#btn-all').style.display = trips.length > 3 ? '' : 'none';
   $('#btn-all').textContent = `Alle ${trips.length}`;
   $('#h-list').innerHTML = recent.length ? recent.map(tripRow).join('')
     : `<div class="empty">${state.trips.length ? 'Keine Fahrten in diesem Monat.' : 'Noch keine Fahrten. Importiere deine CSV-Dateien über das Zahnrad oben rechts.'}</div>`;
@@ -481,7 +484,7 @@ function allTripsScreen(ym) {
         if (t) { setEditDraft(t); push(screenSummary()); }
       }));
     },
-    next: { label: 'Nachtragen', icon: 'plus', run: () => { newDraft(); push(screenStart(false)); } },
+    next: { label: 'Nachtragen', icon: 'plus', run: () => { newDraft(); push(screenDate()); } },
   };
 }
 
@@ -536,6 +539,7 @@ document.addEventListener('click', e => {
     'primary': () => state.open ? finishTrip() : startTrip(),
     'open-trip': openTripDetails,
     'all': () => openSheet(allTripsScreen(state.month)),
+    'new': () => { newDraft(); openSheet(screenDate()); },
     'export': () => openSheet(exportScreen(state.month)),
     'settings': () => openSheet(settingsScreen()),
     'prev': () => { state.month = shiftMonth(state.month, -1); render(); },
@@ -711,7 +715,7 @@ function startTrip() {
   openSheet(screenStart(false));
 }
 function newDraft() {
-  draft = { mode: 'new', id: null, date: todayIso(), purpose: '', start: lastOdo(), end: '', km: 0 };
+  draft = { mode: 'new', id: null, date: todayIso(), purpose: '', start: '', end: '', km: 0 };
 }
 function setEditDraft(t) {
   draft = { mode: 'edit', id: t.id, date: t.date, purpose: t.purpose, start: t.km_start ? String(t.km_start) : '', end: t.km_end ? String(t.km_end) : '', km: t.km };
@@ -743,9 +747,37 @@ async function afterEdit() {
   return true;
 }
 
+// Nachtragen, Schritt 1: Wann? Heute / Gestern / Vorgestern mit einem Tipp, sonst Kalender
+function screenDate() {
+  const day = n => { const d = new Date(); d.setDate(d.getDate() - n); return isoOf(d); };
+  const pick = iso => { draft.date = iso; draft.start = lastOdo(null, iso); push(screenStart(false)); };
+  return {
+    label: LABELS.new,
+    title: 'Wann war die Fahrt?',
+    mount(el) {
+      const longDate = iso => parseIso(iso).toLocaleDateString('de-DE', { weekday: 'long', day: 'numeric', month: 'long' });
+      el.insertAdjacentHTML('beforeend', `
+        <div class="summary">
+          ${[['Heute', 0], ['Gestern', 1], ['Vorgestern', 2]].map(([t, n]) => `
+            <button class="row" data-day="${day(n)}">
+              <span class="main"><div class="t">${t}</div><div class="s">${longDate(day(n))}</div></span>${chev()}
+            </button>`).join('')}
+          <label class="row" style="position:relative">
+            <span class="main"><div class="t">Anderes Datum</div><div class="s">Aus dem Kalender wählen</div></span>${chev()}
+            <input type="date" id="other-date" max="${todayIso()}" style="position:absolute;inset:0;opacity:0;width:100%;height:100%;-webkit-appearance:none;appearance:none">
+          </label>
+        </div>`);
+      el.querySelectorAll('[data-day]').forEach(b => b.addEventListener('click', () => pick(b.dataset.day)));
+      const inp = $('#other-date');
+      inp.addEventListener('click', () => { try { inp.showPicker(); } catch {} });
+      inp.addEventListener('change', () => { if (inp.value) pick(inp.value); });
+    },
+  };
+}
+
 // KM-Stand Beginn: mit dem letzten Endstand vorbelegt → meist nur „Weiter“
 function screenStart(fromSummary) {
-  const base = draft.mode === 'open' || draft.mode === 'new' ? lastOdo() : '';
+  const base = draft.mode === 'open' ? lastOdo() : draft.mode === 'new' ? lastOdo(null, draft.date) : '';
   const compBase = base || draft.start;
   let full = draft.start, ghost = 0;
   return {
