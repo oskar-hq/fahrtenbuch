@@ -1,7 +1,12 @@
+// Zeitzone für den Monatsversand (Container laufen oft in UTC)
+process.env.TZ = process.env.TZ || 'Europe/Berlin';
+
 const express = require('express');
 const Database = require('better-sqlite3');
 const path = require('path');
 const fs = require('fs');
+const { monthSummary, buildPdf } = require('./report');
+const { createMailer } = require('./mailer');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -46,11 +51,6 @@ db.exec(`
 
 app.use(express.json());
 app.use(express.text({ type: ['text/csv', 'text/plain'], limit: '2mb' }));
-// PDF-Bibliotheken lokal ausliefern (kein CDN nötig)
-const mod = (...p) => path.join(__dirname, 'node_modules', ...p);
-app.get('/vendor/jspdf.js', (req, res) => res.sendFile(mod('jspdf', 'dist', 'jspdf.umd.min.js')));
-app.get('/vendor/jspdf-autotable.js', (req, res) => res.sendFile(mod('jspdf-autotable', 'dist', 'jspdf.plugin.autotable.min.js')));
-
 app.use(express.static(path.join(__dirname, 'public'), {
   setHeaders(res, file) {
     // HTML immer frisch laden, damit Updates sofort in der Home-Screen-App ankommen
@@ -246,8 +246,8 @@ app.post('/api/import', (req, res) => {
 
 app.get('/api/settings', (req, res) => {
   const s = {};
-  db.prepare('SELECT key, value FROM settings').all().forEach(r => {
-    s[r.key] = r.key === 'name' ? r.value : parseFloat(r.value);
+  db.prepare("SELECT key, value FROM settings WHERE key IN ('freeKm', 'pricePerKm')").all().forEach(r => {
+    s[r.key] = parseFloat(r.value);
   });
   res.json(s);
 });
@@ -259,6 +259,42 @@ app.post('/api/settings', (req, res) => {
   if (pricePerKm !== undefined) stmt.run('pricePerKm', String(pricePerKm));
   if (typeof name === 'string' && name.trim()) stmt.run('name', name.trim().slice(0, 60));
   res.json({ ok: true });
+});
+
+// ── API: Monatsabrechnung als PDF ────────────────────────────────────────────
+
+app.get('/api/report/:ym.pdf', (req, res) => {
+  const { ym } = req.params;
+  if (!/^\d{4}-\d{2}$/.test(ym)) return res.status(400).json({ error: 'Ungültiger Monat' });
+  const pdf = buildPdf(monthSummary(db, ym));
+  res.setHeader('Content-Type', 'application/pdf');
+  res.setHeader('Content-Disposition', `inline; filename="Fahrtenbuch_${ym}.pdf"`);
+  res.send(pdf);
+});
+
+// ── API: E-Mail-Versand ──────────────────────────────────────────────────────
+
+const mailer = createMailer(db);
+mailer.start();
+
+app.get('/api/mail', (req, res) => res.json(mailer.publicConfig()));
+
+app.post('/api/mail', (req, res) => {
+  try { res.json(mailer.save(req.body || {})); }
+  catch (e) { res.status(400).json({ error: e.message }); }
+});
+
+// Test: schickt die Abrechnung des Vormonats sofort an die eingetragenen Empfänger
+let lastTest = 0;
+app.post('/api/mail/test', async (req, res) => {
+  if (Date.now() - lastTest < 30 * 1000) return res.status(429).json({ error: 'Bitte kurz warten' });
+  lastTest = Date.now();
+  try {
+    const sum = await mailer.send(mailer.previousMonth());
+    res.json({ ok: true, month: sum.label });
+  } catch (e) {
+    res.status(400).json({ error: e.message });
+  }
 });
 
 app.use('/api', (req, res) => res.status(404).json({ error: 'Nicht gefunden' }));

@@ -362,7 +362,8 @@ const state = {
 };
 
 async function load() {
-  const [trips, settings, open] = await Promise.all([api('GET', '/trips'), api('GET', '/settings'), api('GET', '/open')]);
+  const [trips, settings, open, mail] = await Promise.all([api('GET', '/trips'), api('GET', '/settings'), api('GET', '/open'), api('GET', '/mail').catch(() => null)]);
+  state.mail = mail;
   state.trips = trips;
   state.open = open;
   state.settings = { freeKm: 300, pricePerKm: 0.22, name: '', ...settings };
@@ -1204,7 +1205,7 @@ function listScreen({ label, title, rows, after }) {
         <button class="row" data-i="${i}">
           <span class="main"><div class="t">${esc(r.t)}</div><div class="s">${esc(r.s)}</div></span>
           ${chev()}
-        </button>`).join('')}</div>${after ? `<p class="fine">${after}</p>` : ''}`);
+        </button>`).join('')}</div>${after ? `<p class="fine">${typeof after === 'function' ? after() : after}</p>` : ''}`);
       el.querySelectorAll('[data-i]').forEach(b => b.addEventListener('click', () => items[b.dataset.i].go()));
     },
   };
@@ -1224,10 +1225,117 @@ function settingsScreen() {
         label: 'Einstellungen', title: 'Preis pro Mehrkilometer', unit: 'Euro pro Kilometer', decimal: true,
         value: fmtPrice(state.settings.pricePerKm), save: v => saveSettings({ pricePerKm: Math.max(0, v) }),
       })) },
+      { t: 'E-Mail-Versand', s: mailStatus(), go: openMailSettings },
       { t: 'CSV importieren', s: 'Doppelte Fahrten werden übersprungen', go: () => $('#file-in').click() },
       { t: 'Alle Fahrten sichern', s: `${state.trips.length} Fahrten als CSV`, go: exportBackup },
     ],
   });
+}
+
+// ── E-Mail-Versand ───────────────────────────────────────────────────────────
+// Die Zugangsdaten liegen nur auf dem Server; die App bekommt das Passwort nie zurück.
+function mailStatus() {
+  const m = state.mail;
+  if (!m) return 'Monatsabrechnung automatisch verschicken';
+  if (!m.active) return 'Aus';
+  return `Am 1. jeden Monats an ${m.to.length === 1 ? m.to[0] : m.to.length + ' Empfänger'}`;
+}
+
+async function loadMail() {
+  try { state.mail = await api('GET', '/mail'); } catch { /* Toast kommt aus api() */ }
+}
+async function saveMail(patch) {
+  state.mail = await api('POST', '/mail', patch);
+  toast('Gespeichert');
+}
+async function openMailSettings() {
+  await loadMail();
+  if (state.mail) push(mailScreen());
+}
+
+function mailScreen() {
+  return listScreen({
+    label: 'Einstellungen',
+    title: 'E-Mail-Versand',
+    rows: () => {
+      const m = state.mail;
+      const rows = [
+        { t: 'Empfänger', s: m.to.length ? m.to.join(', ') : 'Niemand – Versand ist aus', go: () => push(textScreen({
+          title: 'An wen geht die Abrechnung?', value: m.to.join(', '), type: 'email', placeholder: 'name@beispiel.de',
+          hint: 'Mehrere Adressen mit Komma trennen. Leer lassen, um den Versand auszuschalten.', allowEmpty: true,
+          save: v => saveMail({ to: v }),
+        })) },
+        { t: 'Absender', s: m.user || 'Nicht eingetragen', go: () => push(textScreen({
+          title: 'Von welcher Adresse?', value: m.user, type: 'email', placeholder: 'deine@adresse.de',
+          hint: 'Mit diesem Postfach wird verschickt. Bei bekannten Anbietern wird der Server automatisch eingetragen.',
+          save: v => saveMail({ user: v }),
+        })) },
+        { t: 'Passwort', s: m.hasPassword ? '••••••••' : 'Nicht eingetragen', go: () => push(textScreen({
+          title: 'Passwort des Postfachs', value: '', type: 'password', placeholder: m.hasPassword ? 'Neues Passwort' : 'Passwort',
+          hint: 'Bei Gmail, iCloud und Outlook brauchst du ein App-Passwort (in den Sicherheitseinstellungen deines Kontos), nicht dein normales Passwort.',
+          save: v => saveMail({ pass: v }),
+        })) },
+        { t: 'Server', s: m.host || 'Nicht eingetragen', go: () => push(textScreen({
+          title: 'SMTP-Server', value: m.host, type: 'url', placeholder: 'smtp.beispiel.de',
+          hint: 'Steht in der Hilfe deines E-Mail-Anbieters unter „SMTP“ oder „Postausgangsserver“.',
+          save: v => saveMail({ host: v }),
+        })) },
+        { t: 'Port', s: String(m.port), go: () => push(numberScreen({
+          label: 'E-Mail-Versand', title: 'SMTP-Port', unit: '465 (SSL) oder 587 (STARTTLS)',
+          value: String(m.port), save: v => saveMail({ port: Math.round(v) }),
+        })) },
+      ];
+      if (m.active) rows.push({ t: 'Test-E-Mail senden', s: `Schickt die Abrechnung für ${monthName(prevYM())} jetzt`, go: sendTestMail });
+      return rows;
+    },
+    after: () => {
+      const m = state.mail;
+      const parts = [m.active
+        ? `Die Abrechnung für ${monthName(m.nextReport)} wird am <b>1. ${monthOnly(shiftMonth(m.nextReport, 1))}</b> automatisch verschickt.`
+        : 'Sobald Empfänger, Absender, Passwort und Server eingetragen sind, wird die Abrechnung am 1. jeden Monats automatisch verschickt.'];
+      if (m.lastError) parts.push(`Letzter Versuch fehlgeschlagen: ${esc(m.lastError)}. Es wird stündlich neu versucht.`);
+      return parts.join('<br><br>');
+    },
+  });
+}
+
+const prevYM = () => shiftMonth(currentYM(), -1);
+let testBusy = false;
+async function sendTestMail() {
+  if (testBusy) return;
+  testBusy = true;
+  toast('Wird gesendet …');
+  try {
+    const r = await api('POST', '/mail/test', {});
+    haptic();
+    toast(`Abrechnung ${r.month} verschickt`);
+  } catch { /* Fehlertext kommt als Toast aus api() */ }
+  finally { testBusy = false; }
+}
+
+// Texteingabe als eigener Schritt (eine Sache auf dem Bildschirm)
+function textScreen({ title, value, type, placeholder, hint, allowEmpty, save }) {
+  let v = value || '';
+  const run = async () => {
+    if (!allowEmpty && !v.trim()) return;
+    try { await save(v.trim()); } catch { return; }
+    pop();
+  };
+  return {
+    label: 'E-Mail-Versand', title,
+    mount(el) {
+      el.insertAdjacentHTML('beforeend', `
+        <input class="text-in" id="t-in" type="${type === 'password' ? 'password' : 'text'}" inputmode="${type === 'email' ? 'email' : type === 'url' ? 'url' : 'text'}"
+          autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" enterkeyhint="done"
+          placeholder="${esc(placeholder || '')}" value="${esc(v)}">
+        ${hint ? `<p class="fine">${hint}</p>` : ''}`);
+      const inp = $('#t-in');
+      inp.addEventListener('input', () => { v = inp.value; updateFoot(); });
+      inp.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); run(); } });
+      setTimeout(() => inp.focus(), 350);
+    },
+    next: { label: 'Speichern', icon: 'check', enabled: () => allowEmpty || !!v.trim(), run },
+  };
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
@@ -1314,72 +1422,15 @@ function exportBackup() {
   toast(`${state.trips.length} Fahrten gesichert`);
 }
 
-function loadScript(src) {
-  return new Promise((res, rej) => {
-    const s = document.createElement('script');
-    s.src = src; s.onload = res; s.onerror = () => rej(new Error('PDF-Bibliothek konnte nicht geladen werden'));
-    document.head.appendChild(s);
-  });
-}
-async function ensurePdfLib() {
-  if (window.jspdf?.jsPDF?.API?.autoTable) return;
-  await loadScript('/vendor/jspdf.js');
-  await loadScript('/vendor/jspdf-autotable.js');
-}
-
+// Die PDF erzeugt der Server – dieselbe Datei, die auch per E-Mail verschickt wird
 async function exportPDF(ym) {
-  try { await ensurePdfLib(); } catch (e) { toast(e.message, true); return; }
-  const { jsPDF } = window.jspdf;
-  const { trips, total, extra, cost } = monthStats(ym);
-  const s = state.settings;
-  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-  const gray = [150, 155, 160];
-
-  doc.setFont('helvetica', 'normal'); doc.setFontSize(10); doc.setTextColor(...gray);
-  doc.text('Fahrtenbuch', 20, 22);
-  doc.setFont('helvetica', 'bold'); doc.setFontSize(24); doc.setTextColor(0);
-  doc.text(monthName(ym), 20, 33);
-
-  const kpis = [
-    ['Gefahren', `${fmtKm(total)} km`],
-    ['Freikilometer', `${fmtKm(s.freeKm)} km`],
-    ['Mehrkilometer', `${fmtKm(extra)} km`],
-    ['Zu zahlen', fmtEur(cost).replace('€', 'EUR')],
-  ];
-  kpis.forEach(([k, v], i) => {
-    const x = 20 + i * 43;
-    doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(...gray);
-    doc.text(k, x, 48);
-    doc.setFont('helvetica', 'bold'); doc.setFontSize(14); doc.setTextColor(0);
-    doc.text(v, x, 55);
-  });
-
-  doc.autoTable({
-    startY: 66,
-    head: [['Datum', 'Zweck der Fahrt', 'KM Start', 'KM Ende', 'KM']],
-    body: trips.map(t => [fmtDateDE(t.date), t.purpose, t.km_start || '—', t.km_end || '—', fmtKm(tripKm(t))]),
-    foot: [['', '', '', 'Gesamt', `${fmtKm(total)} km`]],
-    theme: 'plain',
-    styles: { font: 'helvetica', fontSize: 9.5, cellPadding: { top: 3.2, bottom: 3.2, left: 2, right: 2 }, textColor: 20 },
-    headStyles: { fontStyle: 'bold', textColor: 150, fontSize: 8.5 },
-    footStyles: { fontStyle: 'bold', textColor: 0 },
-    columnStyles: { 0: { cellWidth: 26 }, 2: { cellWidth: 22, halign: 'right' }, 3: { cellWidth: 22, halign: 'right' }, 4: { cellWidth: 20, halign: 'right' } },
-    didParseCell: d => { if (d.section !== 'body' && d.column.index >= 2) d.cell.styles.halign = 'right'; },
-    didDrawCell: d => {
-      if (d.section === 'body' || d.section === 'head') {
-        doc.setDrawColor(235); doc.setLineWidth(0.2);
-        doc.line(d.cell.x, d.cell.y + d.cell.height, d.cell.x + d.cell.width, d.cell.y + d.cell.height);
-      }
-    },
-    margin: { left: 18, right: 18 },
-  });
-
-  const ph = doc.internal.pageSize.height;
-  doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(...gray);
-  doc.text(`Erstellt am ${new Date().toLocaleDateString('de-DE')} · Fahrtenbuch`, 20, ph - 12);
-
+  let blob;
+  try {
+    const res = await fetch(`/api/report/${ym}.pdf`);
+    if (!res.ok) throw new Error();
+    blob = await res.blob();
+  } catch { toast('PDF konnte nicht erstellt werden', true); return; }
   const name = `Fahrtenbuch_${ym}.pdf`;
-  const blob = doc.output('blob');
   // Auf dem iPhone: Teilen-Menü (Speichern in Dateien, AirDrop, Mail …)
   const file = new File([blob], name, { type: 'application/pdf' });
   if (navigator.canShare?.({ files: [file] })) {

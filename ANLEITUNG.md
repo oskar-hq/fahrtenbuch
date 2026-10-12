@@ -78,7 +78,37 @@ von GitHub, installiert Abhängigkeiten und startet den Dienst neu.
 
 ---
 
-## D — Neuinstallation von Null (falls der Container mal neu muss)
+## D — Monatsabrechnung automatisch per E-Mail
+
+In der App: Regler-Symbol oben rechts → **E-Mail-Versand**.
+
+| Feld | Was eintragen |
+| --- | --- |
+| Empfänger | Eine oder mehrere Adressen, mit Komma getrennt. Leer = Versand aus. |
+| Absender | Das Postfach, mit dem verschickt wird. Bei Gmail, GMX, web.de, Outlook, iCloud, T-Online, Posteo u. a. werden Server und Port automatisch eingetragen. |
+| Passwort | Passwort dieses Postfachs. **Gmail, iCloud, Outlook:** ein *App-Passwort* aus den Sicherheitseinstellungen des Kontos, nicht das normale Passwort. **GMX/web.de:** vorher im Webmail unter Einstellungen → POP3/IMAP den Versand per SMTP erlauben. |
+| Server / Port | Nur bei eigenen Domains nötig, steht beim Anbieter unter „SMTP-Server“ (meist Port 465). |
+
+Mit **Test-E-Mail senden** prüfst du sofort, ob alles stimmt – Fehler (z. B. falsches Passwort) erscheinen direkt als Meldung.
+
+Danach verschickt der Server die PDF-Abrechnung des Vormonats **am 1. jeden Monats ab 6 Uhr** an alle Empfänger. War der Server zu der Zeit aus, wird das beim nächsten Start nachgeholt; schlägt der Versand fehl, versucht er es stündlich erneut und zeigt den Fehler in den Einstellungen an. Beim ersten Einrichten wird nichts rückwirkend verschickt.
+
+Das Passwort liegt nur auf dem Server (in `data/fahrtenbuch.db`) und wird nie an die App zurückgegeben.
+
+### Wichtig: App mit Login absichern
+
+Die App hat selbst keinen Login – wer die Adresse kennt, kann Fahrten sehen und ändern und jetzt auch die E-Mail-Empfänger umstellen. Da sie über den Cloudflare Tunnel öffentlich erreichbar ist, solltest du **Cloudflare Access** davorschalten (kostenlos bis 50 Nutzer):
+
+1. dash.cloudflare.com → **Zero Trust** → Access → **Applications** → *Add an application* → **Self-hosted**
+2. Domain: `fahrtenbuch.oskarjacobsen.de`
+3. Policy: *Allow* → Include → **Emails** → deine E-Mail-Adresse
+4. Speichern. Beim ersten Öffnen bekommst du einen Code per E-Mail, danach bleibt das iPhone angemeldet (Session-Dauer z. B. auf 1 Monat stellen).
+
+Der automatische Versand läuft davon unabhängig direkt auf dem Server.
+
+---
+
+## E — Neuinstallation von Null (falls der Container mal neu muss)
 
 1. **LXC erstellen** (Proxmox → Create CT): Debian 12, 4 GB Disk, 1 Core, 256 MB RAM, unprivileged.
 2. **Node.js 20 installieren:**
