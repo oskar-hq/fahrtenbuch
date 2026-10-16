@@ -90,6 +90,12 @@
   .chart svg { display: block; width: 100%; height: auto; overflow: visible; }
   .chart text { font-family: var(--font); font-size: 9px; fill: var(--gray); font-weight: 600; }
   .chart .lbl-strong { fill: var(--ink); }
+  /* Linie zeichnet sich beim Öffnen, Monatswechsel und nach dem Speichern */
+  .chart.draw .line { stroke-dasharray: 1; animation: drawLine .7s cubic-bezier(.33,0,.15,1) both; }
+  .chart.draw .end { transform-box: fill-box; transform-origin: center; animation: popIn .32s cubic-bezier(.23,1,.32,1) .6s both; }
+  .chart.draw .lbl-strong { animation: fadeIn .25s ease .65s both; }
+  @keyframes drawLine { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
+  @keyframes popIn { from { opacity: 0; transform: scale(.4); } }
 
   /* ── Listen ─────────────────────────────────────────── */
   .section { margin-top: 28px; }
@@ -165,6 +171,7 @@
   .display { flex: 1; min-height: 110px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; }
   .display .val { font-size: 42px; font-weight: 700; letter-spacing: -0.02em; line-height: 1; white-space: nowrap; }
   .display .val .ghost { color: var(--gray-3); }
+  .display .val span { display: inline-block; transition: color .15s ease; }
   .display .val .slot { color: var(--gray-3); }
   .display .val.empty-val { color: var(--gray-3); }
   .display .hint { font-size: 13px; font-weight: 600; color: var(--gray); text-align: center; min-height: 18px; }
@@ -233,6 +240,7 @@
     .toast.show { opacity: 1; transition: opacity .2s ease; }
     .pill:active, .live:active { transform: none; }
     .live .dot { animation: none; }
+    .chart.draw .line, .chart.draw .end, .chart.draw .lbl-strong { animation: none; }
   }
   @keyframes fadeIn { from { opacity: 0; } }
   @media (min-width: 600px) {
@@ -371,6 +379,7 @@ const state = {
   settings: { freeKm: 300, pricePerKm: 0.22, name: '' },
   open: null,
   month: currentYM(),
+  intro: 'all',   // nächstes Rendern mit Einzeichnen ('all' = Diagramm + Liste, 'chart' = nur Diagramm)
 };
 
 async function load() {
@@ -436,6 +445,9 @@ function shiftMonth(ym, delta) {
 }
 
 function render() {
+  // Einzeichnen/Einblenden nur bei Start, Monatswechsel und Speichern – nicht bei jedem Neuzeichnen
+  const intro = reduceMotion.matches ? null : state.intro;
+  state.intro = null;
   $('#dock-main').innerHTML = state.open
     ? `<span>Fahrt beenden</span>${icon('check')}`
     : `<span>Fahrt starten</span>${icon('plus')}`;
@@ -483,15 +495,26 @@ function render() {
 
   const recent = [...trips].reverse().slice(0, 3);
   $('#btn-all').textContent = trips.length > 3 ? `Alle ${trips.length}` : 'Alle';
+  $('#h-chart').classList.toggle('draw', !!intro);
   $('#h-list').innerHTML = recent.length ? recent.map(tripRow).join('')
-    : `<div class="empty">${state.trips.length ? 'Keine Fahrten in diesem Monat.' : 'Noch keine Fahrten. Importiere deine CSV-Dateien über das Zahnrad oben rechts.'}</div>`;
+    : `<div class="empty">${state.trips.length ? 'Keine Fahrten in diesem Monat.' : 'Noch keine Fahrten. Importiere deine CSV-Dateien über das Regler-Symbol oben rechts.'}</div>`;
+  if (intro === 'all') stagger($('#h-list'));
 }
 
 const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)');
 function switchMonth(dir) {
   state.month = shiftMonth(state.month, dir);
+  state.intro = 'all';
   render();
   monthSwipe.enter(dir);
+}
+
+// Zeilen nacheinander einblenden; ab der 8. kommen alle zusammen, damit lange Listen nicht warten lassen
+function stagger(container, base = 160) {
+  if (!container || reduceMotion.matches) return;
+  container.querySelectorAll('.row').forEach((row, i) => row.animate(
+    [{ opacity: 0, transform: 'translateY(8px)' }, { opacity: 1, transform: 'none' }],
+    { duration: 320, delay: base + Math.min(i, 8) * 45, easing: 'cubic-bezier(.23,1,.32,1)', fill: 'backwards' }));
 }
 
 function tripRow(t) {
@@ -508,6 +531,7 @@ function allTripsScreen(ym) {
     mount(el) {
       const trips = [...monthStats(ym).trips].reverse();
       el.insertAdjacentHTML('beforeend', `<div class="summary">${trips.length ? trips.map(tripRow).join('') : '<div class="empty">Keine Fahrten in diesem Monat.</div>'}</div>`);
+      stagger(el.querySelector('.summary'), 90);
       el.querySelectorAll('[data-trip]').forEach(b => b.addEventListener('click', e => {
         e.stopPropagation();
         const t = state.trips.find(x => x.id === Number(b.dataset.trip));
@@ -550,9 +574,11 @@ function chartSVG(ym, trips, uptoDay) {
     <text x="${W}" y="${y(free) + 3.5}" text-anchor="end">${fmtKm(free)}</text>
     <text x="${W}" y="${B + 3.5}" text-anchor="end">0</text>
     ${uptoDay > 0 ? `
-      <path d="${path}" fill="none" stroke="#000" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
-      <circle cx="${end[0]}" cy="${end[1]}" r="9" fill="#e6e8eb"/>
-      <circle cx="${end[0]}" cy="${end[1]}" r="3.5" fill="#000"/>
+      <path class="line" pathLength="1" d="${path}" fill="none" stroke="#000" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+      <g class="end">
+        <circle cx="${end[0]}" cy="${end[1]}" r="9" fill="#e6e8eb"/>
+        <circle cx="${end[0]}" cy="${end[1]}" r="3.5" fill="#000"/>
+      </g>
       ${!over && Math.abs(y(free) - end[1]) > 14 && B - end[1] > 14 ? `<text x="${W}" y="${end[1] + 3.5}" text-anchor="end" class="lbl-strong">${fmtKm(total)}</text>` : ''}` : ''}
     ${ticks}
   </svg>`;
@@ -836,6 +862,7 @@ const monthSwipe = (() => {
     body.style.opacity = '0';
     timer = setTimeout(() => {
       state.month = shiftMonth(state.month, dir);
+      state.intro = 'all';
       render();
       enter(dir, w * 0.35);
     }, dur);
@@ -864,6 +891,7 @@ async function afterSave(trip) {
   const ym = trip ? trip.date.slice(0, 7) : state.month;
   const before = monthStats(ym).total;
   state.month = ym;                       // dahin springen, wo die Fahrt gelandet ist
+  state.intro = 'chart';                  // Linie neu zeichnen; die neue Zeile bekommt eine eigene Animation
   await load();
   if (!trip || reduceMotion.matches) return;
   const after = monthStats(ym).total;
@@ -914,6 +942,17 @@ function press(kp, k) {
   kp.fresh = false; kp.value = v;
   kp.onChange(v);
   updateFoot();
+  if (k !== 'bksp') popDigit($('#d-val'));   // Löschen bleibt sofort, ohne Animation
+}
+
+// Neu getippte Ziffer kurz von unten einrasten lassen. Der Wert selbst steht schon da –
+// die Animation läuft nur darüber und bremst die Eingabe nicht.
+// Die zuletzt getippte Ziffer ist immer die letzte schwarze (graue sind nur ergänzt).
+function popDigit(el) {
+  if (!el || reduceMotion.matches) return;
+  const target = [...el.querySelectorAll('span')].reverse().find(sp => /\d/.test(sp.textContent) && !sp.classList.contains('ghost'));
+  target?.animate([{ transform: 'translateY(0.22em) scale(.92)', opacity: 0.2 }, { transform: 'none', opacity: 1 }],
+    { duration: 160, easing: 'cubic-bezier(.23,1,.32,1)' });
 }
 document.addEventListener('keydown', e => {
   if (!sheet.stack.length) return;
@@ -1295,7 +1334,7 @@ function numberScreen({ label, title, value, decimal, unit, save }) {
     label, title,
     mount(el) {
       el.insertAdjacentHTML('beforeend', `<div class="display"><div class="val num" id="d-val"></div><div class="hint" id="d-hint">${esc(unit)}</div></div>`);
-      const paint = () => { const d = $('#d-val'); d.className = 'val num' + (v ? '' : ' empty-val'); d.textContent = v || '0'; };
+      const paint = () => { const d = $('#d-val'); d.className = 'val num' + (v ? '' : ' empty-val'); d.innerHTML = [...(v || '0')].map(c => `<span>${esc(c)}</span>`).join(''); };
       mountKeypad(el, { value: v, fresh: true, decimal, max: 5, onChange(x) { v = x; paint(); } });
       paint();
     },
