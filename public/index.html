@@ -35,7 +35,10 @@
     --font: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Inter", "Helvetica Neue", system-ui, sans-serif;
   }
 
-  html { background: var(--bg); -webkit-text-size-adjust: 100%; }
+  html { background: var(--bg); -webkit-text-size-adjust: 100%; touch-action: manipulation; }
+  #h-body, #h-live { transition: opacity .25s ease; }
+  body.booting #h-body, body.booting #h-live { opacity: 0; }
+  #h-body { touch-action: pan-y; will-change: transform; }
   body {
     font-family: var(--font); background: var(--bg); color: var(--ink);
     -webkit-font-smoothing: antialiased; min-height: 100vh; min-height: 100dvh;
@@ -220,15 +223,24 @@
   .toast.error .ti { background: var(--red); color: #fff; }
   .toast span { overflow: hidden; text-overflow: ellipsis; }
 
+  /* Bewegung reduzieren: keine Bewegungen, aber weiche Überblendungen, damit nichts aufpoppt */
   @media (prefers-reduced-motion: reduce) {
-    *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
+    .sheet-card, .sheet:not(.open) .sheet-card { transform: none; opacity: 0; transition: opacity .2s ease, visibility 0s .2s; }
+    .sheet.open .sheet-card { opacity: 1; transition: opacity .2s ease; }
+    .screen.in-fwd, .screen.in-back { animation: fadeIn .2s ease; }
+    .toast, .toast.show { transform: translate(-50%, 0); }
+    .toast { opacity: 0; transition: opacity .2s ease, visibility 0s .2s; }
+    .toast.show { opacity: 1; transition: opacity .2s ease; }
+    .pill:active, .live:active { transform: none; }
+    .live .dot { animation: none; }
   }
+  @keyframes fadeIn { from { opacity: 0; } }
   @media (min-width: 600px) {
     .sheet-card { margin-top: 40px; margin-bottom: 40px; border-radius: 18px; }
   }
 </style>
 </head>
-<body>
+<body class="booting">
 
 <div class="app">
   <header class="top">
@@ -368,6 +380,7 @@ async function load() {
   state.open = open;
   state.settings = { freeKm: 300, pricePerKm: 0.22, name: '', ...settings };
   render();
+  document.body.classList.remove('booting');
 }
 
 // Letzter bekannter KM-Stand = Endstand der zeitlich letzten Fahrt
@@ -476,11 +489,7 @@ const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)');
 function switchMonth(dir) {
   state.month = shiftMonth(state.month, dir);
   render();
-  // Räumliche Richtung zeigen: der neue Monat kommt von der Seite, auf die man getippt hat
-  $('#h-body').animate(
-    reduceMotion.matches ? [{ opacity: 0.4 }, { opacity: 1 }]
-      : [{ opacity: 0, transform: `translateX(${dir * 18}px)` }, { opacity: 1, transform: 'none' }],
-    { duration: 240, easing: 'cubic-bezier(.23,1,.32,1)' });
+  monthSwipe.enter(dir);
 }
 
 function tripRow(t) {
@@ -667,7 +676,8 @@ const gesture = (() => {
     clearTimeout(timer);
     // Läuft gerade eine Animation? Dort weitermachen, wo das Sheet gerade ist (unterbrechbar)
     // Nur eigene, noch laufende Gesten-Animationen übernehmen (nicht die Einblend-Animation des Schritts)
-    const cardY = card.style.transform ? offsetOf(card).m42 : 0;
+    const cardMoving = card.style.transform || card.getAnimations().length;   // auch mitten im Öffnen
+    const cardY = cardMoving ? offsetOf(card).m42 : 0;
     const scrX = scr.style.transform ? offsetOf(scr).m41 : 0;
     g = { mode: 'pending', x0: x, y0: y, cardY, scrX, target, hist: [], h: card.offsetHeight, w: card.offsetWidth };
     if (Math.abs(cardY) > 1 || Math.abs(scrX) > 1) {
@@ -710,7 +720,9 @@ const gesture = (() => {
   function end() {
     if (!g) return;
     const mode = g.mode, hist = g.hist;
-    if (mode === 'pending' || !hist.length) { g = null; return; }
+    if (mode === 'pending') { g = null; return; }
+    // Gegriffen, aber nicht bewegt: von der aktuellen Position aus normal weiterlaufen lassen
+    if (!hist.length) hist.push({ v: mode === 'down' ? g.cardY : g.scrX, t: performance.now() });
     const v = velocity(), pos = hist[hist.length - 1].v, size = mode === 'down' ? g.h : g.w;
     const commit = pos + project(Math.max(0, v)) > size * 0.4 && v > -0.05;
     g = null;
@@ -750,6 +762,113 @@ const gesture = (() => {
 
   return { reset };
 })();
+
+// ── Monat wechseln per Wischen auf der Startseite ────────────────────────────
+// Nach links = nächster Monat, nach rechts = voriger. Folgt dem Finger, beim aktuellen Monat
+// gibt es nach links nur Gummiband-Widerstand. Die Pfeile ‹ › nutzen dieselbe Richtung.
+const monthSwipe = (() => {
+  const body = $('#h-body');
+  let g = null, timer = null;
+  const settle = () => { clearTimeout(timer); body.style.transition = ''; body.style.transform = ''; body.style.opacity = ''; };
+
+  // Neuer Monat gleitet von der Seite herein, aus der er kommt
+  function enter(dir, from = 40) {
+    if (reduceMotion.matches) { body.animate([{ opacity: 0.4 }, { opacity: 1 }], { duration: 200 }); return; }
+    body.style.transition = 'none';
+    body.style.transform = `translateX(${dir * from}px)`;
+    body.style.opacity = '0';
+    void body.offsetWidth;
+    body.style.transition = `transform 320ms ${SNAP}, opacity 220ms ease-out`;
+    body.style.transform = 'translateX(0)';
+    body.style.opacity = '1';
+    timer = setTimeout(settle, 340);
+  }
+
+  body.addEventListener('touchstart', e => {
+    if (sheet.stack.length || e.touches.length !== 1) return;
+    settle();
+    const t = e.touches[0];
+    g = { x0: t.clientX, y0: t.clientY, mode: 'pending', hist: [], w: body.offsetWidth };
+  }, { passive: true });
+
+  body.addEventListener('touchmove', e => {
+    if (!g) return;
+    const t = e.touches[0], dx = t.clientX - g.x0, dy = t.clientY - g.y0;
+    if (g.mode === 'pending') {
+      if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return;
+      if (Math.abs(dx) > Math.abs(dy) * 1.2) { g.mode = 'h'; body.style.transition = 'none'; }
+      else { g = null; return; }   // senkrecht → normal scrollen
+    }
+    if (e.cancelable) e.preventDefault();
+    const canNext = state.month < currentYM();
+    const x = dx < 0 && !canNext ? rubber(dx, g.w / 3) : dx;
+    body.style.transform = `translateX(${x}px)`;
+    body.style.opacity = String(1 - Math.min(1, Math.abs(x) / g.w) * 0.5);
+    g.hist.push({ v: x, t: e.timeStamp || performance.now() });
+    if (g.hist.length > 12) g.hist.shift();
+  }, { passive: false });
+
+  const end = () => {
+    if (!g || g.mode !== 'h' || !g.hist.length) { g = null; return; }
+    const h = g.hist, last = h[h.length - 1];
+    let i = h.length - 1;
+    while (i > 0 && last.t - h[i - 1].t < 80) i--;
+    const v = last.t > h[i].t ? (last.v - h[i].v) / (last.t - h[i].t) : 0;
+    const x = last.v, w = g.w, projected = x + project(v);
+    const canNext = state.month < currentYM();
+    const dir = projected < -w * 0.3 && v <= 0.05 && canNext ? 1 : projected > w * 0.3 && v >= -0.05 ? -1 : 0;
+    g = null;
+    if (!dir) {   // zurückfedern
+      body.style.transition = `transform 360ms ${SNAP}, opacity 360ms ${SNAP}`;
+      body.style.transform = 'translateX(0)';
+      body.style.opacity = '1';
+      timer = setTimeout(settle, 380);
+      return;
+    }
+    // Rauswerfen mit der Fingergeschwindigkeit, dann kommt der neue Monat von der anderen Seite
+    const remaining = w - Math.abs(x), speed = Math.abs(v);
+    const dur = speed > 0.1 ? clamp(4 * remaining / speed, 120, 260) : 240;
+    body.style.transition = `transform ${dur}ms ${speed > 0.1 ? FLING : SNAP}, opacity ${dur}ms ease-in`;
+    body.style.transform = `translateX(${-dir * w}px)`;
+    body.style.opacity = '0';
+    timer = setTimeout(() => {
+      state.month = shiftMonth(state.month, dir);
+      render();
+      enter(dir, w * 0.35);
+    }, dur);
+  };
+  body.addEventListener('touchend', end);
+  body.addEventListener('touchcancel', end);
+
+  return { enter };
+})();
+
+// ── Nach dem Speichern: zeigen, was sich verändert hat ───────────────────────
+// Die Kilometer zählen vom alten zum neuen Wert hoch, die neue Fahrt gleitet in die Liste.
+function countUp(el, from, to, delay = 0) {
+  const t0 = performance.now() + delay, dur = 650;
+  const paint = v => { el.innerHTML = `${fmtKm(v)} <small>km</small>`; };
+  paint(from);
+  const step = now => {
+    const p = clamp((now - t0) / dur, 0, 1), e = 1 - (1 - p) ** 3;
+    paint(from + (to - from) * e);
+    if (p < 1) requestAnimationFrame(step);
+  };
+  requestAnimationFrame(step);
+}
+
+async function afterSave(trip) {
+  const ym = trip ? trip.date.slice(0, 7) : state.month;
+  const before = monthStats(ym).total;
+  state.month = ym;                       // dahin springen, wo die Fahrt gelandet ist
+  await load();
+  if (!trip || reduceMotion.matches) return;
+  const after = monthStats(ym).total;
+  if (Math.round(after) !== Math.round(before)) countUp($('#h-km'), before, after, 220);
+  $(`#h-list [data-trip="${trip.id}"]`)?.animate(
+    [{ opacity: 0, transform: 'translateY(-10px)' }, { opacity: 1, transform: 'none' }],
+    { duration: 420, delay: 220, easing: 'cubic-bezier(.23,1,.32,1)', fill: 'backwards' });
+}
 
 // iOS zeigt :active (Druck-Feedback) nur, wenn es einen Touch-Listener gibt
 document.addEventListener('touchstart', () => {}, { passive: true });
@@ -844,7 +963,8 @@ function draftKm(d = draft) {
   return Number(d.km) || 0;
 }
 
-function startTrip() {
+async function startTrip() {
+  await booted;
   draft = { mode: 'open', date: todayIso(), purpose: '', start: lastOdo(), end: '' };
   openSheet(screenStart(false));
 }
@@ -1014,8 +1134,8 @@ async function finishOpen() {
   try { trip = await api('POST', '/open/finish', { km_end: draft.end }); }
   catch { btn.disabled = false; return; }
   closeSheet();
-  await load();
   toast(`${fmtKm(trip.km)} km · ${trip.purpose}`);
+  await afterSave(trip);
 }
 
 // Ziel / Zweck – häufige Ziele mit einem Tipp
@@ -1150,14 +1270,14 @@ function screenSummary() {
         haptic();
         const btn = $('#btn-next'); btn.disabled = true;
         const body = { date: draft.date, purpose: draft.purpose.trim(), km_start: draft.start || null, km_end: draft.end || null, km: draftKm() };
+        let trip;
         try {
-          if (draft.id) await api('PUT', `/trips/${draft.id}`, body);
-          else await api('POST', '/trips', body);
+          trip = draft.id ? await api('PUT', `/trips/${draft.id}`, body) : await api('POST', '/trips', body);
         } catch { btn.disabled = false; return; }
-        const km = body.km, isNew = !draft.id;
+        const isNew = !draft.id;
         closeSheet();
-        await load();
-        toast(isNew ? `${fmtKm(km)} km gespeichert` : 'Fahrt aktualisiert');
+        toast(isNew ? `${fmtKm(trip.km)} km gespeichert` : 'Fahrt aktualisiert');
+        await afterSave(trip);
       },
     },
   };
@@ -1454,7 +1574,8 @@ function toast(msg, isError = false) {
 
 // ── Start ────────────────────────────────────────────────────────────────────
 hydrateIcons();
-load();
+// Erstes Laden merken: wer sofort nach dem Öffnen „Fahrt starten“ tippt, bekommt trotzdem den KM-Stand vorbelegt
+const booted = load().catch(() => {});
 // Beim Zurückkehren in die App (z. B. nach Mitternacht) aktualisieren
 document.addEventListener('visibilitychange', () => { if (!document.hidden && !sheet.stack.length) load(); });
 </script>
