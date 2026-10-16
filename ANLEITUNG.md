@@ -69,12 +69,20 @@ hinzufügen, damit das neue Icon übernommen wird.
 
 ## C — Updates einspielen
 
+**In der App:** Regler-Symbol oben rechts → **App-Update**. Die App zeigt, was neu ist, und spielt
+es mit **Jetzt aktualisieren** auf dem Server ein: Datenbank sichern (die letzten 5 Sicherungen liegen in
+`data/`), `git pull`, bei neuen Paketen `npm install`, Neustart. Danach lädt sich die App von selbst neu.
+Schlägt `npm install` fehl, wird das Update zurückgenommen und die alte Version läuft weiter.
+
+Voraussetzungen (beides ist bei der Einrichtung nach Abschnitt A schon erledigt):
+- der Dienst läuft per systemd mit `Restart=always`
+- `git config --global credential.helper store` wurde einmal ausgeführt, damit `git pull` ohne Passwort-Eingabe klappt
+
+**Ohne App** (z. B. wenn die App nicht mehr startet) – in der Proxmox-Konsole:
+
 ```bash
 /opt/fahrtenbuch/update.sh
 ```
-
-Das Skript legt vorher eine Kopie der Datenbank in `data/` ab, holt den neuesten Stand
-von GitHub, installiert Abhängigkeiten und startet den Dienst neu.
 
 ---
 

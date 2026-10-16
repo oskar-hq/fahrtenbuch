@@ -18,7 +18,13 @@ fs.mkdirSync(DATA_DIR, { recursive: true });
 // Datenbank öffnen (wird automatisch erstellt falls nicht vorhanden)
 // Schema ist identisch zur alten Version → bestehende fahrtenbuch.db funktioniert weiter.
 const db = new Database(path.join(DATA_DIR, 'fahrtenbuch.db'));
-db.pragma('journal_mode = WAL');
+// Normaler Journal-Modus: die Datenbank ist immer genau eine Datei,
+// damit ein einfaches `cp fahrtenbuch.db …` eine vollständige Sicherung ist.
+// (Stellt Datenbanken der Vorversion, die im WAL-Modus liefen, automatisch um.)
+db.pragma('journal_mode = DELETE');
+// Beim Beenden (Neustart, Update) sauber schließen
+process.on('exit', () => db.close());
+for (const sig of ['SIGTERM', 'SIGINT']) process.on(sig, () => process.exit(0));
 
 db.exec(`
   CREATE TABLE IF NOT EXISTS trips (
