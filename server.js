@@ -7,6 +7,7 @@ const path = require('path');
 const fs = require('fs');
 const { monthSummary, buildPdf } = require('./report');
 const { createMailer } = require('./mailer');
+const { createUpdater } = require('./updater');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -292,6 +293,31 @@ app.post('/api/mail/test', async (req, res) => {
   try {
     const sum = await mailer.send(mailer.previousMonth());
     res.json({ ok: true, month: sum.label });
+  } catch (e) {
+    res.status(400).json({ error: e.message });
+  }
+});
+
+// ── API: App-Update von GitHub ───────────────────────────────────────────────
+
+const updater = createUpdater(db, DATA_DIR);
+
+app.get('/api/version', async (req, res) => {
+  try { res.json(await updater.version()); }
+  catch { res.json({ commit: null }); }   // z. B. nicht per git installiert
+});
+
+app.get('/api/update', async (req, res) => {
+  try { res.json(await updater.check()); }
+  catch (e) { res.status(400).json({ error: `Update-Prüfung fehlgeschlagen: ${e.message}` }); }
+});
+
+app.post('/api/update', async (req, res) => {
+  try {
+    const result = await updater.update();
+    res.json(result);
+    // Neue Version laden: beenden, systemd startet sofort neu
+    if (result.updated && result.restarting) setTimeout(() => process.exit(0), 500);
   } catch (e) {
     res.status(400).json({ error: e.message });
   }

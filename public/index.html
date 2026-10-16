@@ -374,7 +374,9 @@ const state = {
 };
 
 async function load() {
-  const [trips, settings, open, mail] = await Promise.all([api('GET', '/trips'), api('GET', '/settings'), api('GET', '/open'), api('GET', '/mail').catch(() => null)]);
+  const [trips, settings, open, mail, version] = await Promise.all([api('GET', '/trips'), api('GET', '/settings'), api('GET', '/open'),
+    api('GET', '/mail').catch(() => null), fetch('/api/version').then(r => r.json()).catch(() => null)]);
+  state.version = version;
   state.mail = mail;
   state.trips = trips;
   state.open = open;
@@ -624,7 +626,8 @@ function updateFoot() {
   const next = $('#btn-next');
   if (scr.next) {
     next.style.display = '';
-    next.innerHTML = `<span>${esc(scr.next.label || 'Weiter')}</span>${icon(scr.next.icon || 'next')}`;
+    const label = typeof scr.next.label === 'function' ? scr.next.label() : scr.next.label;
+    next.innerHTML = `<span>${esc(label || 'Weiter')}</span>${icon(scr.next.icon || 'next')}`;
     next.disabled = scr.next.enabled ? !scr.next.enabled() : false;
   } else next.style.display = 'none';
 }
@@ -1348,6 +1351,7 @@ function settingsScreen() {
       { t: 'E-Mail-Versand', s: mailStatus(), go: openMailSettings },
       { t: 'CSV importieren', s: 'Doppelte Fahrten werden übersprungen', go: () => $('#file-in').click() },
       { t: 'Alle Fahrten sichern', s: `${state.trips.length} Fahrten als CSV`, go: exportBackup },
+      { t: 'App-Update', s: state.version?.commit ? `Version ${state.version.commit} vom ${fmtShortDate(state.version.date)}` : 'Neueste Version von GitHub holen', go: () => push(updateScreen()) },
     ],
   });
 }
@@ -1455,6 +1459,79 @@ function textScreen({ title, value, type, placeholder, hint, allowEmpty, save })
       setTimeout(() => inp.focus(), 350);
     },
     next: { label: 'Speichern', icon: 'check', enabled: () => allowEmpty || !!v.trim(), run },
+  };
+}
+
+// ── App-Update ───────────────────────────────────────────────────────────────
+// Prüft GitHub auf neue Versionen, spielt sie auf dem Server ein und lädt die App danach neu.
+const fmtShortDate = iso => iso ? new Date(iso).toLocaleDateString('de-DE', { day: 'numeric', month: 'short', year: 'numeric' }) : '';
+
+function updateScreen() {
+  let info = null, phase = 'checking', error = '';   // checking | ready | updating | restarting | error
+  const paint = () => {
+    const el = $('#u-body');
+    if (!el) return;
+    const v = info || state.version || {};
+    const rows = [`<div class="sum-row"><span class="k">Installiert</span><span class="v num">${esc(v.commit || '—')} · ${fmtShortDate(v.date)}</span></div>`];
+    let text = '';
+    if (phase === 'checking') text = 'Suche nach Updates …';
+    else if (phase === 'error') text = `<b>Das hat nicht geklappt.</b><br>${esc(error)}`;
+    else if (phase === 'updating') text = '<b>Wird aktualisiert …</b><br>Datenbank wird gesichert, neue Version wird geladen. Das dauert meist ein paar Sekunden.';
+    else if (phase === 'restarting') text = '<b>Startet neu …</b><br>Die App lädt sich gleich von selbst neu.';
+    else if (!info.commits.length) text = 'Du hast die neueste Version.';
+    else {
+      text = `<b>${info.commits.length === 1 ? 'Eine neue Änderung' : `${info.commits.length} neue Änderungen`}</b>`;
+      rows.push(...info.commits.slice(0, 8).map(c => `<div class="sum-row"><span class="k">${esc(c.commit)}</span><span class="v">${esc(c.subject)}</span></div>`));
+    }
+    if (info && !info.supervised && phase === 'ready' && info.commits.length) text += '<br><br>Die App läuft nicht als systemd-Dienst – nach dem Update bitte von Hand neu starten.';
+    el.innerHTML = rows.join('') + `<p class="fine">${text}</p>`;
+    updateFoot();
+  };
+
+  async function check() {
+    phase = 'checking'; paint();
+    try { info = await api('GET', '/update'); phase = 'ready'; }
+    catch (e) { phase = 'error'; error = e.message; }
+    paint();
+  }
+
+  // Nach dem Neustart: warten, bis der Server mit der neuen Version antwortet
+  async function waitForRestart(to) {
+    const until = Date.now() + 90 * 1000;
+    while (Date.now() < until) {
+      await new Promise(r => setTimeout(r, 1000));
+      try {
+        const v = await (await fetch('/api/version', { cache: 'no-store' })).json();
+        if (v.commit === to) { haptic(); location.reload(); return; }
+      } catch { /* Server startet noch */ }
+    }
+    phase = 'error'; error = 'Der Server ist nach dem Update nicht wieder hochgekommen. Bitte in Proxmox nachsehen (journalctl -u fahrtenbuch).';
+    paint();
+  }
+
+  async function run() {
+    phase = 'updating'; paint();
+    let r;
+    try { r = await api('POST', '/update', {}); }
+    catch (e) { phase = 'error'; error = e.message; paint(); return; }
+    if (!r.updated) { toast('Schon auf dem neuesten Stand'); return check(); }
+    if (!r.restarting) { phase = 'error'; error = `Version ${r.to} ist geladen. Bitte die App auf dem Server neu starten (systemctl restart fahrtenbuch).`; paint(); return; }
+    phase = 'restarting'; paint();
+    waitForRestart(r.to);
+  }
+
+  return {
+    label: 'Einstellungen', title: 'App-Update',
+    mount(el) {
+      el.insertAdjacentHTML('beforeend', '<div class="summary" id="u-body"></div>');
+      if (!info && phase === 'checking') check(); else paint();
+    },
+    next: {
+      label: () => phase === 'updating' ? 'Wird aktualisiert …' : phase === 'restarting' ? 'Startet neu …' : phase === 'error' ? 'Erneut prüfen' : 'Jetzt aktualisieren',
+      icon: 'download',
+      enabled: () => phase === 'error' || (phase === 'ready' && info.commits.length > 0),
+      run: () => phase === 'error' ? check() : run(),
+    },
   };
 }
 
