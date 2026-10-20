@@ -169,9 +169,10 @@
   .s-title { font-size: 22px; font-weight: 700; letter-spacing: -0.02em; line-height: 1.2; margin-top: 10px; }
 
   .display { flex: 1; min-height: 110px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; }
-  .display .val { font-size: 42px; font-weight: 700; letter-spacing: -0.02em; line-height: 1; white-space: nowrap; }
+  .display .val { position: relative; perspective: 300px; font-size: 42px; font-weight: 700; letter-spacing: -0.02em; line-height: 1; white-space: nowrap; }
   .display .val .ghost { color: var(--gray-3); }
   .display .val span { display: inline-block; transition: color .15s ease; }
+  .display .val .gone { position: absolute; pointer-events: none; }
   .display .val .slot { color: var(--gray-3); }
   .display .val.empty-val { color: var(--gray-3); }
   .display .hint { font-size: 13px; font-weight: 600; color: var(--gray); text-align: center; min-height: 18px; }
@@ -929,9 +930,12 @@ function mountKeypad(el, opts) {
   sheet.keypad = kp;
   return kp;
 }
+// Löschen nimmt immer nur das letzte Zeichen weg – auch beim vorbelegten Wert,
+// damit man z. B. vom letzten Stand nur die letzten Ziffern korrigieren kann.
 function press(kp, k) {
+  const wasFresh = kp.fresh;
   let v = kp.fresh ? '' : kp.value;
-  if (k === 'bksp') v = kp.fresh ? '' : v.slice(0, -1);
+  if (k === 'bksp') { if (!kp.value) return; v = kp.value.slice(0, -1); }
   else if (k === ',') { if (!kp.decimal || v.includes(',')) return; v = (v || '0') + ','; }
   else {
     if (kp.decimal && v.includes(',') && v.split(',')[1].length >= 2) return;
@@ -939,20 +943,53 @@ function press(kp, k) {
     if (v === '0' && !kp.decimal) v = '';
     v += k;
   }
+  const el = $('#d-val');
+  const gone = k === 'bksp' ? lastTyped(el) : null;
+  const rect = gone && { x: gone.offsetLeft, y: gone.offsetTop, text: gone.textContent };
   kp.fresh = false; kp.value = v;
-  kp.onChange(v);
+  kp.onChange(v, k, wasFresh);
   updateFoot();
-  if (k !== 'bksp') popDigit($('#d-val'));   // Löschen bleibt sofort, ohne Animation
+  if (k === 'bksp') dropDigit(el, rect); else popDigit(el);
 }
 
-// Neu getippte Ziffer kurz von unten einrasten lassen. Der Wert selbst steht schon da –
-// die Animation läuft nur darüber und bremst die Eingabe nicht.
-// Die zuletzt getippte Ziffer ist immer die letzte schwarze (graue sind nur ergänzt).
+// Die zuletzt getippte Ziffer ist immer die letzte schwarze (graue sind nur ergänzt, Punkte nur Trenner).
+function lastTyped(el) {
+  if (!el || el.classList.contains('empty-val')) return null;
+  return [...el.querySelectorAll('span:not(.gone)')].reverse().find(sp => sp.textContent !== '.' && !sp.classList.contains('ghost'));
+}
+// Neu getippte Ziffer rollt wie ein Zählwerk von unten ein, schießt minimal über und rastet ein.
+// Der Wert selbst steht schon da – die Animation läuft nur darüber und bremst die Eingabe nicht.
 function popDigit(el) {
   if (!el || reduceMotion.matches) return;
-  const target = [...el.querySelectorAll('span')].reverse().find(sp => /\d/.test(sp.textContent) && !sp.classList.contains('ghost'));
-  target?.animate([{ transform: 'translateY(0.22em) scale(.92)', opacity: 0.2 }, { transform: 'none', opacity: 1 }],
-    { duration: 160, easing: 'cubic-bezier(.23,1,.32,1)' });
+  lastTyped(el)?.animate([
+    { transform: 'translateY(0.55em) rotateX(-80deg) scale(.8)', opacity: 0, filter: 'blur(2px)' },
+    { transform: 'translateY(-0.08em) rotateX(8deg) scale(1.06)', opacity: 1, filter: 'blur(0)', offset: .65 },
+    { transform: 'none', opacity: 1 },
+  ], { duration: 220, easing: 'cubic-bezier(.23,1,.32,1)' });
+  el.animate([{ transform: 'none' }, { transform: 'scale(1.025)' }, { transform: 'none' }],
+    { duration: 180, easing: 'ease-out' });
+}
+// Gelöschte Ziffer: eine Kopie an der alten Stelle rollt nach oben weg und verblasst,
+// darunter steht schon der neue Wert (z. B. die graue Platzhalter-Ziffer).
+function dropDigit(el, at) {
+  if (!el || !at || reduceMotion.matches) return;
+  const c = document.createElement('span');
+  c.className = 'gone';
+  c.textContent = at.text;
+  c.style.left = at.x + 'px'; c.style.top = at.y + 'px';
+  el.appendChild(c);
+  c.animate([
+    { transform: 'none', opacity: 1 },
+    { transform: 'translateY(-0.5em) rotateX(75deg) scale(.75)', opacity: 0, filter: 'blur(2px)' },
+  ], { duration: 200, easing: 'cubic-bezier(.4,0,.6,1)', fill: 'forwards' }).onfinish = () => c.remove();
+  // Wird die Stelle dabei grau (Platzhalter), blendet die graue Ziffer sanft von unten ein
+  const spans = [...el.querySelectorAll('span:not(.gone)')];
+  const now = spans.slice(spans.indexOf(lastTyped(el)) + 1).find(sp => sp.textContent !== '.');
+  if (now?.classList.contains('ghost'))
+    now.animate([{ opacity: 0, transform: 'translateY(0.3em)' }, { opacity: 1, transform: 'none' }],
+      { duration: 200, delay: 60, easing: 'cubic-bezier(.23,1,.32,1)', fill: 'backwards' });
+  el.animate([{ transform: 'none' }, { transform: 'translateX(-2px)' }, { transform: 'none' }],
+    { duration: 160, easing: 'ease-out' });
 }
 document.addEventListener('keydown', e => {
   if (!sheet.stack.length) return;
@@ -1076,6 +1113,9 @@ function screenStart(fromSummary) {
   const base = draft.mode === 'open' ? lastOdo() : draft.mode === 'new' ? lastOdo(null, draft.date) : '';
   const compBase = base || draft.start;
   let full = draft.start, ghost = 0;
+  // Korrigieren: Löschen am vorbelegten Stand nimmt hinten Ziffern weg, der Rest bleibt stehen.
+  // Neue Ziffern füllen dann die Lücke von vorne auf (statt als „letzte Ziffern“ ergänzt zu werden).
+  let typed = '', fixing = false;
   return {
     label: LABELS[draft.mode],
     title: 'KM-Stand Beginn',
@@ -1083,9 +1123,16 @@ function screenStart(fromSummary) {
       el.insertAdjacentHTML('beforeend', `<div class="display"><div class="val num" id="d-val"></div><div class="hint" id="d-hint"></div></div>`);
       const paint = () => {
         const v = $('#d-val'), h = $('#d-hint');
+        h.className = 'hint';
+        if (fixing && !full) {
+          v.className = 'val num';
+          v.innerHTML = odoHTML(typed + compBase.slice(typed.length), 0, typed.length);
+          const missing = compBase.length - typed.length;
+          h.textContent = missing === 1 ? 'Noch eine Ziffer' : `Noch ${missing} Ziffern`;
+          return;
+        }
         v.className = 'val num' + (full ? '' : ' empty-val');
         v.innerHTML = full ? odoHTML(full, ghost) : '0';
-        h.className = 'hint';
         if (!base || !full) h.textContent = base ? `Letzter Stand ${fmtOdo(base)}` : 'Kilometerstand eintippen';
         else if (full === base) h.textContent = 'Wie Ende der letzten Fahrt';
         else if (Number(full) > Number(base)) h.textContent = `${fmtKm(full - base)} km seit deiner letzten Fahrt`;
@@ -1093,7 +1140,14 @@ function screenStart(fromSummary) {
       };
       mountKeypad(el, {
         value: full, fresh: true, max: 7,
-        onChange(v) { ({ full, ghost } = completeOdo(v, compBase)); paint(); },
+        onChange(v, k, wasFresh) {
+          typed = v;
+          if (k === 'bksp' && wasFresh && compBase) fixing = true;
+          if (!v) fixing = false;
+          if (fixing) { full = v.length >= compBase.length ? v : ''; ghost = 0; }
+          else ({ full, ghost } = completeOdo(v, compBase));
+          paint();
+        },
       });
       paint();
     },
