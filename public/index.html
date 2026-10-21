@@ -199,6 +199,15 @@
   }
   .text-in::placeholder { color: var(--gray); font-weight: 500; }
   .suggest { margin-top: 14px; padding-bottom: 12px; }
+  .rcpts { margin-top: 28px; display: flex; flex-direction: column; gap: 10px; }
+  .rcpt { position: relative; }
+  .rcpt .text-in { margin-top: 0; padding-right: 52px; }
+  .rcpt .rm { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); width: 40px; height: 40px; display: grid; place-items: center; color: var(--gray); border-radius: 10px; }
+  .rcpt .rm svg { width: 16px; height: 16px; }
+  .rcpt .rm:active { background: var(--line); }
+  .add-rcpt { margin-top: 14px; display: flex; align-items: center; gap: 10px; font-size: 15px; font-weight: 700; padding: 8px 0; }
+  .add-rcpt svg { width: 18px; height: 18px; }
+  .add-rcpt:active { opacity: .5; }
 
   .summary { margin-top: 28px; }
   .sum-row {
@@ -1477,11 +1486,7 @@ function mailScreen() {
     rows: () => {
       const m = state.mail;
       const rows = [
-        { t: 'Empfänger', s: m.to.length ? m.to.join(', ') : 'Niemand – Versand ist aus', go: () => push(textScreen({
-          title: 'An wen geht die Abrechnung?', value: m.to.join(', '), type: 'email', placeholder: 'name@beispiel.de',
-          hint: 'Mehrere Adressen mit Komma trennen – jede bekommt eine eigene E-Mail. Leer lassen, um den Versand auszuschalten.', allowEmpty: true,
-          save: v => saveMail({ to: v }),
-        })) },
+        { t: 'Empfänger', s: !m.to.length ? 'Niemand – Versand ist aus' : m.to.length === 1 ? m.to[0] : `${m.to[0]} + ${m.to.length - 1} weitere`, go: () => push(recipientsScreen()) },
         { t: 'Absender', s: m.user || 'Nicht eingetragen', go: () => push(textScreen({
           title: 'Von welcher Adresse?', value: m.user, type: 'email', placeholder: 'deine@adresse.de',
           hint: 'Mit diesem Postfach wird verschickt. Bei bekannten Anbietern wird der Server automatisch eingetragen.',
@@ -1528,6 +1533,57 @@ async function sendTestMail() {
     toast(`Abrechnung ${r.month} verschickt`);
   } catch { /* Fehlertext kommt als Toast aus api() */ }
   finally { testBusy = false; }
+}
+
+// Empfänger: eine Zeile pro Adresse, mit + kommt eine weitere dazu
+function recipientsScreen() {
+  let list = state.mail.to.length ? [...state.mail.to] : [''];
+  const run = async () => {
+    try { await saveMail({ to: list.map(a => a.trim()).filter(Boolean) }); } catch { return; }
+    pop();
+  };
+  return {
+    label: 'E-Mail-Versand', title: 'An wen geht die Abrechnung?',
+    mount(el) {
+      el.insertAdjacentHTML('beforeend', `
+        <div class="rcpts" id="rcpts"></div>
+        <button class="add-rcpt" id="add-rcpt">${icon('plus')}Weitere Adresse</button>
+        <p class="fine">Jede Adresse bekommt die Abrechnung als eigene E-Mail. Alle entfernen, um den Versand auszuschalten.</p>`);
+      const box = $('#rcpts');
+      const row = (val, i) => `
+        <div class="rcpt">
+          <input class="text-in" data-i="${i}" type="text" inputmode="email" autocomplete="off" autocapitalize="none" autocorrect="off"
+            spellcheck="false" enterkeyhint="done" placeholder="name@beispiel.de" value="${esc(val)}">
+          ${list.length > 1 || val ? `<button class="rm" data-rm="${i}" aria-label="Adresse entfernen">${icon('close')}</button>` : ''}
+        </div>`;
+      const paint = () => { box.innerHTML = list.map(row).join(''); };
+      const fresh = el => { if (!reduceMotion.matches) el?.animate([{ opacity: 0, transform: 'translateY(-8px)' }, { opacity: 1, transform: 'none' }], { duration: 240, easing: 'cubic-bezier(.23,1,.32,1)' }); };
+      box.addEventListener('input', e => {
+        const i = Number(e.target.dataset.i);
+        const hadRm = list.length > 1 || list[i];
+        list[i] = e.target.value;
+        // ✕ erscheint, sobald etwas in der einzigen Zeile steht
+        if (!hadRm !== !(list.length > 1 || list[i])) { const pos = e.target.selectionStart; paint(); const inp = box.querySelector(`[data-i="${i}"]`); inp.focus(); inp.setSelectionRange(pos, pos); }
+      });
+      box.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); run(); } });
+      box.addEventListener('click', e => {
+        const b = e.target.closest('[data-rm]');
+        if (!b) return;
+        list.splice(Number(b.dataset.rm), 1);
+        if (!list.length) list = [''];
+        paint();
+      });
+      $('#add-rcpt').addEventListener('click', () => {
+        // Leere Zeile gibt es schon → einfach dorthin springen
+        const empty = list.findIndex(a => !a.trim());
+        if (empty < 0) { list.push(''); paint(); fresh(box.lastElementChild); }
+        box.querySelector(`[data-i="${empty < 0 ? list.length - 1 : empty}"]`).focus();
+      });
+      paint();
+      if (!state.mail.to.length) setTimeout(() => box.querySelector('input')?.focus(), 350);
+    },
+    next: { label: 'Speichern', icon: 'check', enabled: () => true, run },
+  };
 }
 
 // Texteingabe als eigener Schritt (eine Sache auf dem Bildschirm)
