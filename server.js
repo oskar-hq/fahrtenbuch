@@ -297,7 +297,8 @@ app.post('/api/mail/test', async (req, res) => {
   if (Date.now() - lastTest < 30 * 1000) return res.status(429).json({ error: 'Bitte kurz warten' });
   lastTest = Date.now();
   try {
-    const sum = await mailer.send(mailer.previousMonth());
+    const { sum, failed } = await mailer.send(mailer.previousMonth());
+    if (failed.length) return res.status(400).json({ error: `Nicht verschickt an ${mailer.describe(failed)}` });
     res.json({ ok: true, month: sum.label });
   } catch (e) {
     res.status(400).json({ error: e.message });

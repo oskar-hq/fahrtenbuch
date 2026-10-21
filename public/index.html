@@ -1479,7 +1479,7 @@ function mailScreen() {
       const rows = [
         { t: 'Empfänger', s: m.to.length ? m.to.join(', ') : 'Niemand – Versand ist aus', go: () => push(textScreen({
           title: 'An wen geht die Abrechnung?', value: m.to.join(', '), type: 'email', placeholder: 'name@beispiel.de',
-          hint: 'Mehrere Adressen mit Komma trennen. Leer lassen, um den Versand auszuschalten.', allowEmpty: true,
+          hint: 'Mehrere Adressen mit Komma trennen – jede bekommt eine eigene E-Mail. Leer lassen, um den Versand auszuschalten.', allowEmpty: true,
           save: v => saveMail({ to: v }),
         })) },
         { t: 'Absender', s: m.user || 'Nicht eingetragen', go: () => push(textScreen({

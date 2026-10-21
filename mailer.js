@@ -1,6 +1,7 @@
 // Automatischer Versand der Monatsabrechnung per E-Mail.
 // Einmal pro Stunde wird geprüft, ob die Abrechnung für den Vormonat schon raus ist.
 // Ab dem 1. um 6 Uhr wird sie verschickt; war der Server aus, holt er das beim nächsten Start nach.
+// Jeder Empfänger bekommt eine eigene E-Mail (niemand sieht die anderen Adressen).
 const nodemailer = require('nodemailer');
 const { monthSummary, buildPdf, fmtKm, fmtEur } = require('./report');
 
@@ -81,18 +82,31 @@ function createMailer(db) {
     return publicConfig();
   }
 
-  async function send(ym) {
+  // Schickt die Abrechnung einzeln an jede Adresse in `to`.
+  // Gibt die Adressen zurück, bei denen es nicht geklappt hat (mit Fehlertext).
+  async function send(ym, to) {
     const c = config();
     if (!isActive(c)) throw new Error('E-Mail-Versand ist nicht vollständig eingerichtet');
     const sum = monthSummary(db, ym);
+    const pdf = buildPdf(sum);
     const transport = nodemailer.createTransport({
       host: c.host, port: c.port, secure: c.port === 465,
       auth: { user: c.user, pass: c.pass },
       connectionTimeout: 15000, greetingTimeout: 15000,
     });
-    await transport.sendMail({
-      from: `Fahrtenbuch <${c.user}>`,
-      to: c.to.join(', '),
+    const failed = [];
+    for (const addr of to || c.to) {
+      try { await sendOne(transport, c.user, addr, ym, sum, pdf); }
+      catch (e) { failed.push({ to: addr, error: e.message }); }
+    }
+    transport.close();
+    return { sum, failed };
+  }
+
+  function sendOne(transport, from, to, ym, sum, pdf) {
+    return transport.sendMail({
+      from: `Fahrtenbuch <${from}>`,
+      to,
       subject: `Fahrtenbuch ${sum.label}: ${fmtKm(sum.total)} km · ${fmtEur(sum.cost)} €`,
       text: [
         'Hallo,', '',
@@ -103,10 +117,10 @@ function createMailer(db) {
         `Zu zahlen:      ${fmtEur(sum.cost)} €`, '',
         'Diese E-Mail wurde automatisch vom Fahrtenbuch verschickt.',
       ].join('\n'),
-      attachments: [{ filename: `Fahrtenbuch_${ym}.pdf`, content: buildPdf(sum), contentType: 'application/pdf' }],
+      attachments: [{ filename: `Fahrtenbuch_${ym}.pdf`, content: pdf, contentType: 'application/pdf' }],
     });
-    return sum;
   }
+  const describe = failed => failed.map(f => `${f.to}: ${f.error}`).join(' · ');
 
   let running = false;
   async function tick() {
@@ -117,7 +131,14 @@ function createMailer(db) {
     if (get('mail_last_sent') >= ym) return;
     running = true;
     try {
-      await send(ym);
+      // Wer diesen Monat schon bedient wurde, bekommt beim nächsten Versuch nichts doppelt
+      const [doneYm, doneList = ''] = get('mail_sent_to').split('|');
+      const done = doneYm === ym ? doneList.split(',').filter(Boolean) : [];
+      const open = config().to.filter(a => !done.includes(a));
+      const { failed } = await send(ym, open);
+      const ok = open.filter(a => !failed.some(f => f.to === a));
+      set('mail_sent_to', `${ym}|${[...done, ...ok].join(',')}`);
+      if (failed.length) throw new Error(describe(failed));
       set('mail_last_sent', ym);
       set('mail_last_error', '');
       console.log(`Abrechnung ${ym} per E-Mail verschickt`);
@@ -135,7 +156,7 @@ function createMailer(db) {
     setInterval(tick, 60 * 60 * 1000);
   }
 
-  return { publicConfig, save, send, start, previousMonth };
+  return { publicConfig, save, send, describe, start, previousMonth };
 }
 
 module.exports = { createMailer, previousMonth };
