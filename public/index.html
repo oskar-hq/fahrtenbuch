@@ -178,6 +178,10 @@
   .display .hint { font-size: 13px; font-weight: 600; color: var(--gray); text-align: center; min-height: 18px; }
   .display .hint.ok { color: var(--ink); }
   .display .hint.warn { color: var(--red); }
+  .adj { display: flex; gap: 10px; min-height: 36px; }
+  .adj button { min-width: 56px; height: 36px; padding: 0 14px; border-radius: 18px; background: var(--soft); font-size: 15px; font-weight: 700; }
+  .adj button:active { background: var(--line); transform: scale(.96); }
+  .adj.off { visibility: hidden; }
 
   .keypad { display: grid; grid-template-columns: repeat(3, 1fr); padding: 0 8px 4px; }
   .key { height: 58px; font-size: 24px; font-weight: 600; display: grid; place-items: center; border-radius: 14px; transition: background .12s; }
@@ -413,6 +417,24 @@ function lastOdo(excludeId, uptoDate) {
     if (t.id !== excludeId && t.km_end) return String(t.km_end);
   }
   return '';
+}
+
+// Übliche Strecke zu einem Ziel: die Kilometerzahl, die bei diesem Ziel am häufigsten vorkam.
+// Gewichtet wie die Zielvorschläge, damit eine neue Route die alte nach ein paar Fahrten ablöst.
+function typicalKm(purpose) {
+  const key = (purpose || '').trim().toLowerCase();
+  if (!key) return 0;
+  const now = Date.now();
+  const votes = new Map();   // km → Gewicht
+  for (const t of state.trips) {
+    const km = Math.round(Number(t.km));
+    if (t.purpose.trim().toLowerCase() !== key || !(km > 0)) continue;
+    const ageDays = Math.max(0, (now - parseIso(t.date).getTime()) / 864e5);
+    votes.set(km, (votes.get(km) || 0) + 0.5 ** (ageDays / HALF_LIFE_DAYS));
+  }
+  let best = 0, bestW = 0;
+  for (const [km, w] of votes) if (w > bestW) { best = km; bestW = w; }
+  return best;
 }
 
 // Zielvorschläge – werden bei jedem Öffnen aus den gespeicherten Fahrten berechnet.
@@ -1173,11 +1195,14 @@ function screenStart(fromSummary) {
 
 // KM-Stand Ende: alles bis auf die letzten zwei Ziffern steht schon da (Fahrten < 100 km).
 // Für längere Fahrten einfach mit ← weiter zurück löschen.
+// Bekanntes Ziel: der Endstand mit der üblichen Strecke steht schon komplett da → meist nur „Speichern“.
+// −1/+1 für kleine Abweichungen; eine getippte Ziffer ersetzt den Vorschlag wie gewohnt.
 function screenEnd(fromSummary, finish) {
   const start = draft.start;
-  const ref = draft.end || start;                  // liefert die grauen Platzhalter-Ziffern
+  const guess = !draft.end && start ? typicalKm(draft.purpose) : 0;
+  const ref = draft.end || (guess ? String(Number(start) + guess) : start);   // liefert die grauen Platzhalter-Ziffern
   const prefix = start.length > 2 ? start.slice(0, -2) : '';
-  let v = draft.end ? draft.end.slice(0, -2) : prefix;
+  let v = guess ? ref : draft.end ? draft.end.slice(0, -2) : prefix;
 
   const calc = () => {
     if (!start) return v ? Number(v) : null;
@@ -1192,12 +1217,17 @@ function screenEnd(fromSummary, finish) {
     label: finish ? draft.purpose : LABELS[draft.mode],
     title: 'KM-Stand Ende',
     mount(el) {
-      el.insertAdjacentHTML('beforeend', `<div class="display"><div class="val num" id="d-val"></div><div class="hint" id="d-hint"></div></div>`);
+      el.insertAdjacentHTML('beforeend', `
+        <div class="display">
+          <div class="val num" id="d-val"></div><div class="hint" id="d-hint"></div>
+          <div class="adj off" id="d-adj"><button data-d="-1">−1</button><button data-d="1">+1</button></div>
+        </div>`);
       const paint = () => {
         const d = $('#d-val'), h = $('#d-hint');
         const full = calc();
         d.className = 'val num';
         h.className = 'hint';
+        $('#d-adj').classList.toggle('off', full === null || !start);
         if (full === null) {
           const tail = ref.slice(v.length);
           d.innerHTML = v || tail ? odoHTML(v + tail, 0, v.length) : '<span class="ghost">0</span>';
@@ -1210,11 +1240,30 @@ function screenEnd(fromSummary, finish) {
           d.innerHTML = odoHTML(String(full), 0);
           const km = start ? full - Number(start) : 0;
           if (!start) h.textContent = '';
-          else if (km > 0) { h.className = 'hint ok'; h.textContent = `= ${fmtKm(km)} km gefahren`; }
+          else if (km > 0) {
+            h.className = 'hint ok';
+            h.textContent = guess && km === guess ? `= ${fmtKm(km)} km · wie meistens` : `= ${fmtKm(km)} km gefahren`;
+          }
           else { h.className = 'hint warn'; h.textContent = 'Muss größer als der Beginn sein'; }
         }
       };
-      mountKeypad(el, { value: v, fresh: false, max: 7, onChange(x) { v = x; paint(); } });
+      const kp = mountKeypad(el, {
+        value: v, fresh: !!guess, max: 7,
+        onChange(x, k, wasFresh) {
+          // Erste Ziffer auf dem Vorschlag: wie ohne Vorschlag nur die letzten zwei Ziffern tippen
+          if (wasFresh && /\d/.test(k)) { x = prefix + k; kp.value = x; }
+          v = x; paint();
+        },
+      });
+      $('#d-adj').addEventListener('click', e => {
+        const b = e.target.closest('[data-d]'), full = calc();
+        if (!b || full === null) return;
+        const n = full + Number(b.dataset.d);
+        if (start && n <= Number(start)) return;
+        v = kp.value = String(n);
+        paint(); updateFoot();
+        popDigit($('#d-val'));
+      });
       paint();
     },
     next: {
