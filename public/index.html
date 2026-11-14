@@ -131,6 +131,21 @@
     pointer-events: none;
   }
   .dock-inner { max-width: 472px; margin: 0 auto; display: flex; gap: 10px; }
+  /* Schnell beenden: bekanntes Ziel → Endstand steht schon da, nur noch bestätigen */
+  .quick {
+    pointer-events: auto; max-width: 472px; margin: 0 auto 10px; display: flex; align-items: center; gap: 12px;
+    padding: 12px 12px 12px 18px; border-radius: 18px; background: #fff;
+    box-shadow: 0 8px 24px rgba(0,0,0,.08), 0 0 0 1px rgba(0,0,0,.04);
+  }
+  .quick[hidden] { display: none; }
+  .quick .q-val { flex: 1; min-width: 0; text-align: left; }
+  .quick .q-val:active { opacity: .5; }
+  .quick .k { font-size: 12px; font-weight: 600; color: var(--gray); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .quick .n { font-size: 24px; font-weight: 700; letter-spacing: -0.02em; line-height: 1.15; margin-top: 2px; white-space: nowrap; position: relative; perspective: 300px; }
+  .quick .n span { display: inline-block; }
+  .quick .n .gone { position: absolute; pointer-events: none; }
+  .quick .adj { min-height: 0; }
+  body.has-quick .app { padding-bottom: calc(var(--safe-bottom) + 200px); }
   .dock .sq { pointer-events: auto; }
   .pill {
     pointer-events: auto; flex: 1; height: 52px; border-radius: 16px; background: var(--ink); color: #fff;
@@ -290,6 +305,7 @@
 </div>
 
 <div class="dock">
+  <div class="quick" id="quick" hidden></div>
   <div class="dock-inner">
     <button class="sq" data-action="export" aria-label="Exportieren"><span data-icon="share"></span></button>
     <button class="pill" id="dock-main" data-action="primary"><span>Fahrt starten</span><span data-icon="plus"></span></button>
@@ -480,8 +496,9 @@ function render() {
   // Einzeichnen/Einblenden nur bei Start, Monatswechsel und Speichern – nicht bei jedem Neuzeichnen
   const intro = reduceMotion.matches ? null : state.intro;
   state.intro = null;
+  renderQuick();
   $('#dock-main').innerHTML = state.open
-    ? `<span>Fahrt beenden</span>${icon('check')}`
+    ? `<span>${quickEnd() ? 'Bestätigen' : 'Fahrt beenden'}</span>${icon('check')}`
     : `<span>Fahrt starten</span>${icon('plus')}`;
 
   const o = state.open;
@@ -624,7 +641,9 @@ document.addEventListener('click', e => {
   const a = e.target.closest('[data-action]');
   if (!a || a.disabled) return;
   ({
-    'primary': () => state.open ? finishTrip() : startTrip(),
+    'primary': () => !state.open ? startTrip() : quickEnd() ? finishQuick() : finishTrip(),
+    'quick-edit': finishTrip,
+    'quick-adj': () => adjustQuick(Number(a.dataset.d)),
     'open-trip': openTripDetails,
     'all': () => openSheet(allTripsScreen(state.month)),
     'export': () => openSheet(exportScreen(state.month)),
@@ -1092,6 +1111,56 @@ function draftFromOpen() {
   const o = state.open;
   draft = { mode: 'open-edit', date: o.date, purpose: o.purpose, start: String(o.km_start), end: '' };
 }
+// ── Schnell beenden ──────────────────────────────────────────────────────────
+// Bekanntes Ziel: unten steht schon der Endstand mit der üblichen Strecke.
+// −1/+1 für kleine Abweichungen, „Bestätigen“ speichert direkt. Antippen der Zahl öffnet den Ziffernblock.
+// Unbekanntes Ziel: kein Vorschlag, der Hauptknopf führt wie gewohnt zum Ziffernblock.
+const quick = { key: '', adj: 0 };
+function quickEnd() {
+  const o = state.open;
+  if (!o) return 0;
+  const key = `${o.date}|${o.purpose}|${o.km_start}`;
+  if (quick.key !== key) { quick.key = key; quick.adj = 0; }   // neue Fahrt → Anpassung vergessen
+  const km = typicalKm(o.purpose);
+  return km ? Number(o.km_start) + km + quick.adj : 0;
+}
+function renderQuick() {
+  const box = $('#quick'), end = quickEnd();
+  const appeared = end && box.hidden;
+  box.hidden = !end;
+  document.body.classList.toggle('has-quick', !!end);
+  if (!end) { box.innerHTML = ''; return; }
+  const km = end - Number(state.open.km_start);
+  box.innerHTML = `
+    <button class="q-val" data-action="quick-edit">
+      <div class="k">KM-Stand Ende · ${fmtKm(km)} km</div>
+      <div class="n num" id="q-n">${odoHTML(String(end), 0)}</div>
+    </button>
+    <div class="adj"><button data-action="quick-adj" data-d="-1">−1</button><button data-action="quick-adj" data-d="1">+1</button></div>`;
+  if (appeared && !reduceMotion.matches) box.animate(
+    [{ opacity: 0, transform: 'translateY(12px)' }, { opacity: 1, transform: 'none' }],
+    { duration: 320, easing: 'cubic-bezier(.23,1,.32,1)' });
+}
+function adjustQuick(d) {
+  if (quickEnd() + d <= Number(state.open.km_start)) return;
+  quick.adj += d;
+  renderQuick();
+  popDigit($('#q-n'));
+}
+let quickBusy = false;
+async function finishQuick() {
+  if (quickBusy) return;
+  quickBusy = true;
+  haptic();
+  const btn = $('#dock-main'); btn.disabled = true;
+  try {
+    const trip = await api('POST', '/open/finish', { km_end: String(quickEnd()) });
+    toast(`${fmtKm(trip.km)} km · ${trip.purpose}`);
+    await afterSave(trip);
+  } catch { /* Fehlertext kommt als Toast aus api() */ }
+  finally { btn.disabled = false; quickBusy = false; }
+}
+
 // Hauptknopf unten rechts während der Fahrt: direkt zum Endstand
 function finishTrip() {
   draftFromOpen();
@@ -1199,7 +1268,8 @@ function screenStart(fromSummary) {
 // −1/+1 für kleine Abweichungen; eine getippte Ziffer ersetzt den Vorschlag wie gewohnt.
 function screenEnd(fromSummary, finish) {
   const start = draft.start;
-  const guess = !draft.end && start ? typicalKm(draft.purpose) : 0;
+  const usual = !draft.end && start ? typicalKm(draft.purpose) : 0;
+  const guess = usual && finish ? usual + quick.adj : usual;   // ±1 von der Karte unten mitnehmen
   const ref = draft.end || (guess ? String(Number(start) + guess) : start);   // liefert die grauen Platzhalter-Ziffern
   const prefix = start.length > 2 ? start.slice(0, -2) : '';
   let v = guess ? ref : draft.end ? draft.end.slice(0, -2) : prefix;
@@ -1242,7 +1312,7 @@ function screenEnd(fromSummary, finish) {
           if (!start) h.textContent = '';
           else if (km > 0) {
             h.className = 'hint ok';
-            h.textContent = guess && km === guess ? `= ${fmtKm(km)} km · wie meistens` : `= ${fmtKm(km)} km gefahren`;
+            h.textContent = usual && km === usual ? `= ${fmtKm(km)} km · wie meistens` : `= ${fmtKm(km)} km gefahren`;
           }
           else { h.className = 'hint warn'; h.textContent = 'Muss größer als der Beginn sein'; }
         }
