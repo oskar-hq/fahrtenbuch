@@ -72,18 +72,20 @@
   .sub { margin-top: 4px; font-size: 13px; font-weight: 500; color: var(--gray); }
 
   /* ── Laufende Fahrt ─────────────────────────────────── */
+  /* Nur Status, keine Handlung: pro Bildschirm ist genau ein Element schwarz – der Knopf unten.
+     Die Leiste ist deshalb leise (grau hinterlegt, kein Schatten) und führt zu den Details, nicht zum Beenden. */
   .live {
-    display: flex; align-items: center; gap: 14px; width: 100%; text-align: left;
-    margin: -24px 0 40px; padding: 16px 18px; border-radius: 18px; background: var(--ink); color: #fff;
-    box-shadow: 0 8px 24px rgba(0,0,0,.14); transition: transform .15s var(--ease);
+    display: flex; align-items: center; gap: 12px; width: 100%; text-align: left;
+    margin: -24px 0 40px; padding: 12px 14px 12px 16px; border-radius: 14px; background: var(--soft); color: var(--ink);
+    transition: opacity .15s;
   }
-  .live:active { transform: scale(.98); }
-  .live .dot { width: 8px; height: 8px; border-radius: 50%; background: #fff; flex: 0 0 auto; animation: pulse 1.6s ease-in-out infinite; }
-  @keyframes pulse { 50% { opacity: .25; } }
+  .live:active { opacity: .5; }
+  .live .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--ink); flex: 0 0 auto; animation: pulse 1.6s ease-in-out infinite; }
+  @keyframes pulse { 50% { opacity: .2; } }
   .live .main { flex: 1; min-width: 0; }
-  .live .t { font-size: 15px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .live .s { font-size: 12px; font-weight: 500; color: rgba(255,255,255,.6); margin-top: 3px; }
-  .live svg { width: 16px; height: 16px; opacity: .6; flex: 0 0 auto; }
+  .live .t { font-size: 14px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .live .s { font-size: 12px; font-weight: 500; color: var(--gray); margin-top: 2px; }
+  .live .more { font-size: 13px; font-weight: 600; color: var(--gray); flex: 0 0 auto; }
 
   /* ── Diagramm ───────────────────────────────────────── */
   .chart { margin: 36px 0 4px; }
@@ -267,7 +269,7 @@
     .toast, .toast.show { transform: translate(-50%, 0); }
     .toast { opacity: 0; transition: opacity .2s ease, visibility 0s .2s; }
     .toast.show { opacity: 1; transition: opacity .2s ease; }
-    .pill:active, .live:active { transform: none; }
+    .pill:active { transform: none; }
     .live .dot { animation: none; }
     .chart.draw .line, .chart.draw .end, .chart.draw .lbl-strong { animation: none; }
   }
@@ -435,21 +437,33 @@ function lastOdo(excludeId, uptoDate) {
   return '';
 }
 
-// Übliche Strecke zu einem Ziel: die Kilometerzahl, die bei diesem Ziel am häufigsten vorkam.
-// Gewichtet wie die Zielvorschläge, damit eine neue Route die alte nach ein paar Fahrten ablöst.
+// Übliche Strecke zu einem Ziel.
+// 1. Bezug: Median der letzten 10 Fahrten zu diesem Ziel (bei gerader Anzahl der kleinere Mittelwert,
+//    denn Abweichungen sind fast immer Umwege, also länger).
+// 2. Fahrten, die mehr als 25 % (mindestens 1 km) davon abweichen, zählen nicht mit –
+//    z. B. „Handball“ mit Abstecher zum Supermarkt verschiebt die übliche Strecke nicht.
+// 3. Von den übrigen gewinnt die Kilometerzahl, die am häufigsten vorkam, gewichtet nach Aktualität
+//    wie die Zielvorschläge. Eine dauerhaft neue Route löst die alte ab, sobald sie die Mehrheit
+//    der letzten 10 Fahrten stellt.
+const TYPICAL_WINDOW = 10, TYPICAL_TOLERANCE = 0.25;
 function typicalKm(purpose) {
   const key = (purpose || '').trim().toLowerCase();
   if (!key) return 0;
+  const trips = state.trips.filter(t => t.purpose.trim().toLowerCase() === key && Math.round(Number(t.km)) > 0);
+  if (!trips.length) return 0;
+  const recent = trips.slice(-TYPICAL_WINDOW).map(t => Math.round(Number(t.km))).sort((a, b) => a - b);
+  const ref = recent[Math.floor((recent.length - 1) / 2)];
+  const tol = Math.max(1, ref * TYPICAL_TOLERANCE);
   const now = Date.now();
   const votes = new Map();   // km → Gewicht
-  for (const t of state.trips) {
+  for (const t of trips) {
     const km = Math.round(Number(t.km));
-    if (t.purpose.trim().toLowerCase() !== key || !(km > 0)) continue;
+    if (Math.abs(km - ref) > tol) continue;   // Umweg oder Ausreißer
     const ageDays = Math.max(0, (now - parseIso(t.date).getTime()) / 864e5);
     votes.set(km, (votes.get(km) || 0) + 0.5 ** (ageDays / HALF_LIFE_DAYS));
   }
-  let best = 0, bestW = 0;
-  for (const [km, w] of votes) if (w > bestW) { best = km; bestW = w; }
+  let best = ref, bestW = 0;
+  for (const [km, w] of votes) if (w > bestW || (w === bestW && km < best)) { best = km; bestW = w; }
   return best;
 }
 
@@ -507,7 +521,7 @@ function render() {
     <button class="live" data-action="open-trip">
       <span class="dot"></span>
       <span class="main"><div class="t">Unterwegs · ${esc(o.purpose)}</div><div class="s num">${relDate(o.date)} · ab ${fmtOdo(o.km_start)}</div></span>
-      ${icon('next')}
+      <span class="more">Details</span>
     </button>` : '';
   if (appeared && !reduceMotion.matches) $('#h-live .live').animate(
     [{ opacity: 0, transform: 'scale(.96)' }, { opacity: 1, transform: 'none' }],
